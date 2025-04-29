@@ -1,15 +1,15 @@
 import pandas as pd
 from collections import Counter
 from copy import deepcopy
-from drill_data import DrillData
+from borehole_data import boreholeData
 
-class DrillProcessor:
+class boreholeProcessor:
     def __init__(self, boreholes, boreholes_thickness):
-        self.boreholes = boreholes
-        self.boreholes_thickness = boreholes_thickness
-        self.unified_sequence = []
-        self.standardized_boreholes = {}
-        self.preconditioning_completes_drilling = {}
+        self.boreholes = boreholes #地层
+        self.boreholes_thickness = boreholes_thickness #地层厚度
+        self.unified_sequence = [] #统一地层序列
+        self.standardized_boreholes = {} #标准化后的钻孔层序
+        self.preconditioning_completes_borehole = {} #预处理完成的钻孔数据
 
 
     def sort_by_standard_order(self, data_list, standard_order):
@@ -172,7 +172,7 @@ class DrillProcessor:
 
     def zero_thickness_filling(self):
         res = {}
-        for key, value in self.preconditioning_completes_drilling.items():
+        for key, value in self.preconditioning_completes_borehole.items():
             thickness_layer = []
             layer_index = 0
             for i in range(len(value)):
@@ -184,18 +184,18 @@ class DrillProcessor:
             res[key] = thickness_layer
         return res
 
-    def create_drilling_class(self, location):
-        drill_class_list = []
+    def create_boreholeing_class(self, location):
+        borehole_class_list = []
         for key, value in self.boreholes.items():
-            temp_drill = DrillData(key, location[key], value, self.boreholes_thickness[key])
-            drill_class_list.append(temp_drill)
-        return drill_class_list
+            temp_borehole = boreholeData(key, location[key], value, self.boreholes_thickness[key])
+            borehole_class_list.append(temp_borehole)
+        return borehole_class_list
 
     def process(self):
         self.unified_sequence = self.get_unified_sequence()
         self.standardized_boreholes = self.complete_missing_layers()
-        self.preconditioning_completes_drilling = self.make_max_compatible_boreholes()
-        self.print_pandas(deepcopy(self.preconditioning_completes_drilling))
+        self.preconditioning_completes_borehole = self.make_max_compatible_boreholes()
+        self.print_pandas(deepcopy(self.preconditioning_completes_borehole))
         self.boreholes_thickness = self.zero_thickness_filling()
         self.print_pandas(deepcopy(self.boreholes_thickness))
 
@@ -226,7 +226,7 @@ def execute_main():
         "BH01": [0, 0],
         "BH02": [1, 1],
     }
-    processor = DrillProcessor(boreholes, boreholes_thickness)
+    processor = boreholeProcessor(boreholes, boreholes_thickness)
     processor.process()
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 import pandas as pd
 from collections import Counter
 from copy import deepcopy
-import drill_data
+import borehole_data
 # test data
 boreholes = {
     "BH01": ["填土", "黄土", "粉土", "粉砂", "砂岩"],
@@ -245,12 +245,12 @@ def zero_thickness_filling(boreholes:dict,borehole_thickness:dict)->dict:
     return res
 
 #构造钻孔对象
-def Create_drilling_class(boreholes:dict,thickness:dict,location:dict):
-    drill_class_list = []
+def Create_boreholeing_class(boreholes:dict,thickness:dict,location:dict):
+    borehole_class_list = []
     for key,value in boreholes.items():
-        temp_drill = drill_data(key,location[key],value,thickness[key])
-        drill_class_list.append(temp_drill)
-    return drill_class_list
+        temp_borehole = borehole_data(key,location[key],value,thickness[key])
+        borehole_class_list.append(temp_borehole)
+    return borehole_class_list
 
 def main():
     # 标准地层序
@@ -258,11 +258,11 @@ def main():
     #去除缺失和倒置的钻孔数据
     standardized_boreholes = complete_missing_layers(boreholes,unified_sequence)
     #预处理完成的钻孔数据
-    preconditioning_completes_drilling = make_max_compatible_boreholes(standardized_boreholes,unified_sequence)
+    preconditioning_completes_borehole = make_max_compatible_boreholes(standardized_boreholes,unified_sequence)
 
-    print_padas(preconditioning_completes_drilling)
+    print_padas(preconditioning_completes_borehole)
 
-    boreholes_thickness_filling = zero_thickness_filling(preconditioning_completes_drilling,boreholes_thickness)
+    boreholes_thickness_filling = zero_thickness_filling(preconditioning_completes_borehole,boreholes_thickness)
 
     df = pd.DataFrame(boreholes_thickness_filling)
     print(df)
