@@ -223,8 +223,15 @@ def execute_main():
         "BH10": [24, 24, 24, 24, 24],
     }
     location = {
-        "BH01": [0, 0],
-        "BH02": [1, 1],
+        "BH01": [11, 13],
+        "BH02": [30, 24],
+        "BH03": [23, 14],
+        "BH04": [13, 14],
+        "BH05": [34, 25],
+        "BH07": [13, 14],
+        "BH08": [12, 13],
+        "BH09": [22, 21],
+        "BH10": [24, 24],
     }
     processor = boreholeProcessor(boreholes, boreholes_thickness)
     processor.process()
