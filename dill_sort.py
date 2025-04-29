@@ -34,6 +34,17 @@ boreholes_thickness = {
     # "B3":["1","2","1","3","4","5"]
 }
 
+    
+def sort_by_standard_order(data_list, standard_order):
+    # 创建一个字典，将标准列表中的元素与其索引对应起来
+    order_map = {value: index for index, value in enumerate(standard_order)}
+    
+    # 使用order_map中定义的顺序排序，未在标准列表中的元素放在末尾
+    sorted_list = sorted(data_list, key=lambda x: order_map.get(x, len(standard_order)))
+    
+    return sorted_list
+
+
 def get_unified_sequence(boreholes):
     # 1. 提取所有地层类型
     all_layers = set(layer for layers in boreholes.values() for layer in layers)
@@ -95,7 +106,7 @@ def make_max_compatible_boreholes(boreholes: dict, unified_sequence: list):
                     if(j >= len(borehole)): break
                     error_layer.add(borehole[j])
                     
-        error_list.append(list(error_layer) if len(error_layer) > 0 else [])
+        error_list.append(sort_by_standard_order(list(error_layer),unified_sequence) if len(error_layer) > 0 else [])
 
     end_error_list = []
    
@@ -107,7 +118,7 @@ def make_max_compatible_boreholes(boreholes: dict, unified_sequence: list):
             end_error_list.extend(borehole[index+1:])
         
     
-    error_list.append(list(set(end_error_list)))
+    error_list.append(sort_by_standard_order(list(set(end_error_list)),unified_sequence))
     
 
     for i in range(len(error_list)):
@@ -132,7 +143,7 @@ def make_max_compatible_boreholes(boreholes: dict, unified_sequence: list):
                 temp.append(borehole[curr_layer_index])
                 curr_layer_index += 1
                 for error_layer in error_list[unified_sequence_index]:
-                    if(curr_layer_index < len(borehole) and borehole[curr_layer_index] in error_layer):
+                    if(curr_layer_index < len(borehole) and Standard_names(borehole[curr_layer_index]) in error_layer):
                         temp.append(borehole[curr_layer_index])
                         curr_layer_index += 1
                     else:
