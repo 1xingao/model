@@ -2,6 +2,8 @@ import pandas as pd
 from collections import Counter
 from copy import deepcopy
 from borehole_data import boreholeData
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill
 
 class boreholeProcessor:
     def __init__(self, boreholes, boreholes_thickness):
@@ -191,6 +193,50 @@ class boreholeProcessor:
             borehole_class_list.append(temp_borehole)
         return borehole_class_list
 
+    def write_to_excel(self, file_path):
+        # 创建一个新的 Excel 工作簿
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Borehole Data"
+
+        # 获取地层名称和钻孔名称
+        layers = list(self.preconditioning_completes_borehole.values())
+        borehole_names = list(self.preconditioning_completes_borehole.keys())
+        thickness_data = list(self.boreholes_thickness.values())
+
+        # 写入表头
+        ws.cell(row=1, column=1, value="地层名称")
+        for col, borehole_name in enumerate(borehole_names, start=2):
+            ws.cell(row=1, column=col, value=f"{borehole_name} (厚度)")
+
+        # 定义颜色填充
+        fill_zero = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")  # 黄色
+        fill_dash = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")  # 红色
+
+        # 写入地层名称和数据
+        max_layers = max(len(layer) for layer in layers)
+        for row in range(max_layers):
+            if row < len(layers[0]):
+                ws.cell(row=row + 2, column=1, value=layers[0][row])  # 地层名称
+            for col, borehole_name in enumerate(borehole_names, start=2):
+                if row < len(layers[col - 2]):
+                    cell = ws.cell(row=row + 2, column=col, value=layers[col - 2][row])
+                    # 根据内容设置颜色
+                    if "0" in layers[col - 2][row]:
+                        cell.fill = fill_zero
+                    elif "-" in layers[col - 2][row]:
+                        cell.fill = fill_dash
+                    else:
+                        cell.fill = PatternFill(start_color="AFEF61", end_color="AFEF61", fill_type="solid")
+
+        # 写入厚度数据
+        for col, thickness in enumerate(thickness_data, start=2):
+            for row, value in enumerate(thickness, start=2):
+                ws.cell(row=row, column=col, value=value)
+
+        # 保存 Excel 文件
+        wb.save(file_path)
+
     def process(self):
         self.unified_sequence = self.get_unified_sequence()
         self.standardized_boreholes = self.complete_missing_layers()
@@ -198,6 +244,8 @@ class boreholeProcessor:
         self.print_pandas(deepcopy(self.preconditioning_completes_borehole))
         self.boreholes_thickness = self.zero_thickness_filling()
         self.print_pandas(deepcopy(self.boreholes_thickness))
+        # 调用写入 Excel 方法
+        self.write_to_excel("borehole_data.xlsx")
 
 def execute_main():
     boreholes = {
