@@ -59,7 +59,8 @@ plt.tight_layout()
 
 image_path = "钻孔分布图.png"
 excel_path = "预测钻孔数据.xlsx"
-plt.savefig(image_path)
+# plt.savefig(image_path)
+plt.show()
 predicted_df.to_excel(excel_path, index=False)
 
-image_path, excel_path
+
