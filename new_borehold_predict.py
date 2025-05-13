@@ -12,20 +12,20 @@ new_points = [(150, 220), (190, 210), (230, 230), (270, 210)]
 
 predicted_data = []
 
-for i, (px, py) in enumerate(new_points):
-    for layer in layers:
-        layer_df = df[df["地层"] == layer]
-        x = layer_df["X"].values.astype(np.float64)
-        y = layer_df["Y"].values.astype(np.float64)
-        z = layer_df["厚度"].values.astype(np.float64)
 
-        OK = OrdinaryKriging(
-            x, y, z,
-            variogram_model='spherical',
-            verbose=False,
-            enable_plotting=False
-        )
+for layer in layers:
+    layer_df = df[df["地层"] == layer]
+    x = layer_df["X"].values.astype(np.float64)
+    y = layer_df["Y"].values.astype(np.float64)
+    z = layer_df["厚度"].values.astype(np.float64)
 
+    OK = OrdinaryKriging(
+        x, y, z,
+        variogram_model='spherical',
+        verbose=False,
+        enable_plotting=False
+    )
+    for i, (px, py) in enumerate(new_points):
         z_pred, z_var = OK.execute('points', np.array([px], dtype=np.float64), np.array([py], dtype=np.float64))
         predicted_data.append({
             "钻孔编号": f"NewZK{i+1}",
@@ -42,7 +42,8 @@ combined_df = pd.concat([df, predicted_df], ignore_index=True)
 # 按钻孔编号分组展示
 grouped_predicted_df = predicted_df.groupby("钻孔编号")
 
-plt.figure(figsize=(10, 8))
+plt.figure(figsize=(20, 8))
+plt.subplot(1,2,1)
 for zk in df["钻孔编号"].unique():
     zk_df = df[df["钻孔编号"] == zk]
     plt.scatter(zk_df["X"].iloc[0], zk_df["Y"].iloc[0], color="blue", label="原始钻孔" if zk == "ZK01" else "", s=60)
@@ -57,6 +58,33 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 
+
+plt.subplot(1,2,2)
+
+color_map = {
+    "填土" :"red",
+    "黄土": "yellow",
+    "粉土": "green",
+    "泥岩": "brown",
+    "砾石": "purple",
+    "砂岩": "pink",
+    "粉砂": "lightblue",
+}
+for target_layer in df["地层"].unique():
+
+    layer_df = combined_df[combined_df["地层"] == target_layer]
+
+    z = layer_df["厚度"].values.astype(np.float64)
+    
+    plt.plot(layer_df["钻孔编号"], z, label=target_layer, color=color_map[target_layer], marker="o", markersize=5, linestyle="-")
+
+
+plt.xlabel("钻孔编号")
+plt.ylabel("厚度 (m)")
+plt.title(f"厚度分布")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
 image_path = "钻孔分布图.png"
 excel_path = "预测钻孔数据.xlsx"
 # plt.savefig(image_path)
