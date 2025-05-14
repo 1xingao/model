@@ -216,11 +216,13 @@ class boreholeProcessor:
         # 写入地层名称和数据
         max_layers = max(len(layer) for layer in layers)
         for row in range(max_layers):
+            layer_replace = layers[0][row].replace("-", "")
+            layer_replace = layer_replace.replace("0", "")
             if row < len(layers[0]):
-                ws.cell(row=row + 2, column=1, value=layers[0][row])  # 地层名称
+                ws.cell(row=row + 2, column=1, value=layer_replace)  # 地层名称
             for col, borehole_name in enumerate(borehole_names, start=2):
                 if row < len(layers[col - 2]):
-                    cell = ws.cell(row=row + 2, column=col, value=layers[col - 2][row])
+                    cell = ws.cell(row=row + 2, column=col)
                     # 根据内容设置颜色
                     if "0" in layers[col - 2][row]:
                         cell.fill = fill_zero

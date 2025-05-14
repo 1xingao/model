@@ -56,4 +56,4 @@ plt.title('实验变异函数及其球状模型拟合')
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.show(), popt
+plt.show()
