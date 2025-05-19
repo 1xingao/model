@@ -75,7 +75,7 @@ ax2 = plt.subplot(2, 2, 2)
 plot_thickness(ax2, sprical_predicted_data, "球状(spherical)厚度分布", "Reds")
 
 ax3 = plt.subplot(2, 2, 3)
-plot_thickness(ax3, linear_predicted_data, "线性(linear)厚度分布", "Blues")
+plot_thickness(ax3, power_predicted_data, "幂(power)厚度分布", "Blues")
 
 ax4 = plt.subplot(2, 2, 4)
 plot_thickness(ax4, gaussian_predicted_data, "高斯(gaussian)厚度分布", "Greens")
