@@ -15,6 +15,7 @@ new_points = [(df["X"].min() + np.random.rand() * (df["X"].max() - df["X"].min()
 
 layer = "黄土"
 layer_df = df[df["地层"] == layer]
+layer_df.to_excel("data.xlsx", index=False)
 x = layer_df["X"].values.astype(np.float64)
 y = layer_df["Y"].values.astype(np.float64)
 z = layer_df["厚度"].values.astype(np.float64)*10
