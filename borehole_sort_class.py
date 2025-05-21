@@ -247,7 +247,7 @@ class boreholeProcessor:
         self.boreholes_thickness = self.zero_thickness_filling()
         self.print_pandas(deepcopy(self.boreholes_thickness))
         # 调用写入 Excel 方法
-        self.write_to_excel("borehole_data.xlsx")
+        self.write_to_excel("./data/borehole_data.xlsx")
 
 def execute_main():
     boreholes = {

@@ -38,7 +38,7 @@ for idx, layer in enumerate(layers):
     ax = axs[idx]
     c = ax.contourf(grid_xx, grid_yy, z_grid, cmap='viridis')
     ax.scatter(x, y, c='red', marker='o', label='原始数据点')
-    ax.set_title(f"{layer} 厚度预测图")
+    ax.set_title(f"./pic/{layer} 厚度预测图")
     ax.set_xlabel("X 坐标")
     ax.set_ylabel("Y 坐标")
     fig.colorbar(c, ax=ax, label="厚度 (m)")

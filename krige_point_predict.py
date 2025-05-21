@@ -3,7 +3,7 @@ import numpy as np
 from pykrige.ok import OrdinaryKriging
 
 # Step 1: 读取 Excel 文件
-df = pd.read_excel("钻孔数据.xlsx")
+df = pd.read_excel("./data/钻孔数据.xlsx")
 
 # Step 2: 提取目标地层（例如 "黄土"）的坐标和厚度
 target_layer = "黄土"

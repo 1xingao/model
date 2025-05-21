@@ -5,7 +5,7 @@ from pykrige.ok import OrdinaryKriging
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
-df = pd.read_excel("增强后的钻孔数据.xlsx")
+df = pd.read_excel("./data/增强后的钻孔数据.xlsx")
 # print(df.head())
 layers = df["地层"].unique()
 np.random.seed(17)
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     plot_thickness(ax4, gaussian_predicted_data, "高斯(gaussian)厚度分布", "Greens")
 
     plt.tight_layout()
-    plt.savefig("厚度分布对比.png", dpi=300)
+    plt.savefig("./pic/厚度分布对比.png", dpi=300)
     plt.show()
 
 
@@ -168,5 +168,5 @@ if __name__ == "__main__":
     # plt.legend()
     # plt.grid(True)
     # plt.tight_layout()
-    # plt.savefig("厚度折线图.png", dpi=300)
+    # plt.savefig("./pic/厚度折线图.png", dpi=300)
     # plt.show()

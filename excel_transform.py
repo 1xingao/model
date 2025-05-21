@@ -56,7 +56,7 @@ def convert_table(input_path, output_path):
 
 
 if __name__ == "__main__":
-    input_file = "borehole_data.xlsx"
-    output_file = "转换后结果.xlsx"
+    input_file = "./data/borehole_data.xlsx"
+    output_file = "./data/转换后结果.xlsx"
     
     convert_table(input_file, output_file)

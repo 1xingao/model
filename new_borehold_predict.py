@@ -90,15 +90,15 @@ def visualization_data(predicted_data,df):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    image_path = "钻孔分布图.png"
-    excel_path = "预测钻孔数据.xlsx"
+    image_path = "./pic/钻孔分布图.png"
+    excel_path = "./pic/预测钻孔数据.xlsx"
     # plt.savefig(image_path)
     plt.show()
     # predicted_df.to_excel(excel_path, index=False)
 
 
 if __name__ == "__main__":
-    df = pd.read_excel("钻孔数据.xlsx")
+    df = pd.read_excel("./data/钻孔数据.xlsx")
     predicted_data = model_krige("spherical",df)
     visualization_data(predicted_data,df)
     
