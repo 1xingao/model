@@ -5,7 +5,7 @@ from pykrige.ok import OrdinaryKriging
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
-df = pd.read_excel("钻孔数据.xlsx")
+df = pd.read_excel("./data/钻孔数据.xlsx")
 layers = df["地层"].unique()
 
 # 设置网格范围
@@ -28,7 +28,7 @@ for idx, layer in enumerate(layers):
 
     OK = OrdinaryKriging(
         x, y, z,
-        variogram_model='spherical',
+        variogram_model='gaussian',
         verbose=False,
         enable_plotting=False
     )
@@ -51,6 +51,6 @@ for j in range(len(layers), len(axs)):
 plt.tight_layout()
 plt.subplots_adjust(hspace=0.3)
 
-plt.savefig("地层厚度预测图.png", dpi=300)
+plt.savefig("./pic/地层厚度预测图.png", dpi=300)
 plt.show()
 
