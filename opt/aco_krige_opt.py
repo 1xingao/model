@@ -144,7 +144,9 @@ def visualize_prediction_variance_comparison(ss_default, ss_opt, x, y, grid_x, g
     fig.colorbar(im1, ax=axs[1], fraction=0.046, pad=0.04)
 
     plt.tight_layout()
+    plt.savefig("./pic/prediction_variance_comparison.png")
     plt.show()
+    
 
 
 
@@ -203,7 +205,9 @@ def interpolate_and_compare(x, y, z, optimized_params, default_params=None, grid
     fig.colorbar(cs2, ax=axs[1])
 
     plt.suptitle("Kriging Interpolation Comparison", fontsize=16)
+    plt.savefig("./pic/kriging_interpolation_comparison.png")
     plt.show()
+    
 
     # 可视化预测方差对比
     visualize_prediction_variance_comparison(ss_default, ss_opt, x, y, grid_x, grid_y)
