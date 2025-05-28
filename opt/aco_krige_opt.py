@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr
 
-def generate_data(seed=0, n_points=30, train_ratio=0.7):
+def generate_data(target_layer="黄土", seed=0, n_points=30, train_ratio=0.7):
     np.random.seed(seed)
     # x = np.random.uniform(0, 100, n_points)
     # y = np.random.uniform(0, 100, n_points)
@@ -14,7 +14,7 @@ def generate_data(seed=0, n_points=30, train_ratio=0.7):
     df = pd.read_excel("./data/增强后的钻孔数据.xlsx")
 
     # Step 2: 提取目标地层（例如 "黄土"）的坐标和厚度
-    target_layer = "黄土"
+
     layer_df = df[df["地层"] == target_layer]
 
     # 获取坐标和厚度
@@ -144,7 +144,7 @@ def visualize_prediction_variance_comparison(ss_default, ss_opt, x, y, grid_x, g
     fig.colorbar(im1, ax=axs[1], fraction=0.046, pad=0.04)
 
     plt.tight_layout()
-    plt.savefig("./pic/prediction_variance_comparison.png")
+    plt.savefig(f"./pic/{target_layer}_prediction_variance_comparison.png")
     plt.show()
     
 
@@ -205,7 +205,7 @@ def interpolate_and_compare(x, y, z, optimized_params, default_params=None, grid
     fig.colorbar(cs2, ax=axs[1])
 
     plt.suptitle("Kriging Interpolation Comparison", fontsize=16)
-    plt.savefig("./pic/kriging_interpolation_comparison.png")
+    plt.savefig(f"./pic/{target_layer}_kriging_interpolation_comparison.png")
     plt.show()
     
 
@@ -213,9 +213,9 @@ def interpolate_and_compare(x, y, z, optimized_params, default_params=None, grid
     visualize_prediction_variance_comparison(ss_default, ss_opt, x, y, grid_x, grid_y)
 
 
-def main():
+def main(target_layer="黄土"):  
     # 1. 生成模拟钻孔数据
-    (x_train, y_train, z_train), (x_test, y_test, z_test) = generate_data()
+    (x_train, y_train, z_train), (x_test, y_test, z_test) = generate_data(target_layer=target_layer)
 
     # 2. 定义参数搜索空间
     nuggets, ranges, sills = define_parameter_space(x_train,y_train,z_train)
@@ -238,4 +238,5 @@ def main():
 
 
 if __name__ == "__main__":
+    target_layer = "黄土"
     main()
