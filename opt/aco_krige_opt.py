@@ -238,5 +238,5 @@ def main(target_layer="黄土"):
 
 
 if __name__ == "__main__":
-    target_layer = "黄土"
+    target_layer = "砾石"
     main()

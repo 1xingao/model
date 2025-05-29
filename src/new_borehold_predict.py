@@ -26,7 +26,7 @@ def model_krige(model,df):
         OK = OrdinaryKriging(
             x, y, z,
             variogram_model=model,
-            verbose=False,
+            verbose=True,
             enable_plotting=False
         )
         for i, (px, py) in enumerate(new_points):

@@ -13,9 +13,9 @@ predict_potins = 100
 new_points = [(df["X"].min() + np.random.rand() * (df["X"].max() - df["X"].min()),
                 df["Y"].min() + np.random.rand() * (df["Y"].max() - df["Y"].min())) for _ in range(predict_potins)]
 
-layer = "黄土"
+layer = "粉土"
 layer_df = df[df["地层"] == layer]
-layer_df.to_excel("data.xlsx", index=False)
+layer_df.to_excel("./data/data.xlsx", index=False)
 x = layer_df["X"].values.astype(np.float64)
 y = layer_df["Y"].values.astype(np.float64)
 z = layer_df["厚度"].values.astype(np.float64)*10
@@ -26,7 +26,7 @@ def get_newpoints_by_model(model,x,y,z,new_points):
     OK = OrdinaryKriging(
         x, y, z,
         variogram_model=model,
-        verbose=False,
+        verbose=True,
         enable_plotting=False
     )
     for i, (px, py) in enumerate(new_points):
@@ -48,7 +48,7 @@ def kriging_predict_grid(model, x, y, z, grid_x, grid_y):
     OK = OrdinaryKriging(
         x, y, z,
         variogram_model=model,
-        verbose=False,
+        verbose=True,
         enable_plotting=False
     )
     z_pred, z_var = OK.execute('grid', grid_x, grid_y)
