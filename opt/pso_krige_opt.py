@@ -3,15 +3,16 @@ from pykrige.ok import OrdinaryKriging
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial.distance import pdist
-from scipy.stats import spearmanr
-
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
-class ACO_Krige_Optimizer:
-    def __init__(self, iters=500, ants=100, decay=0.8):
+
+class PSO_Krige_Optimizer:
+    def __init__(self, iters=200, particles=30, w=0.7, c1=1.5, c2=1.5):
         self.iters = iters
-        self.ants = ants
-        self.decay = decay
+        self.particles = particles
+        self.w = w
+        self.c1 = c1
+        self.c2 = c2
         self.nuggets = None
         self.ranges = None
         self.sills = None
@@ -28,29 +29,18 @@ class ACO_Krige_Optimizer:
         test_idx = np.setdiff1d(np.arange(n_points), train_idx)
         return (x[train_idx], y[train_idx], z[train_idx]), (x[test_idx], y[test_idx], z[test_idx])
 
-    def define_parameter_space(self, x, y, z):
-        domain_size = max(x) - min(x)
-        nuggets_range = np.linspace(0, np.var(z) * 0.8, 10)
-        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 10)
-        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 10)
-        return nuggets_range, ranges_range, sills_range
-
     def auto_define_parameter_space(self, x, y, z, levels=5):
         var_z = np.var(z)
-        nuggets_range = np.linspace(0, var_z * 0.5, levels)
+        nuggets_range = [0, var_z * 0.5]
         coords = np.vstack([x, y]).T
         dists = pdist(coords)
         range_min = np.percentile(dists, 5)
         range_max = np.percentile(dists, 95)
-        ranges_range = np.linspace(range_min, range_max, levels)
-        sills_range = np.linspace(var_z * 0.5, var_z * 2.0, levels)
+        ranges_range = [range_min, range_max]
+        sills_range = [var_z * 0.5, var_z * 2.0]
         return nuggets_range, ranges_range, sills_range
-    
-    def get_parameter(self):
-        return self.nuggets, self.ranges, self.sills
 
     def evaluate_fitness(self, nugget, range_, sill, x_train, y_train, z_train, x_test, y_test, z_test):
-
         try:
             ok = OrdinaryKriging(
                 x_train, y_train, z_train,
@@ -65,67 +55,48 @@ class ACO_Krige_Optimizer:
         except Exception:
             return 1e6
 
-    def ant_colony_optimize(self, x_train, y_train, z_train, x_test, y_test, z_test,
-                            nuggets, ranges, sills, alpha=1.0, beta=2.0):
-        
-        pheromone = np.ones((len(nuggets), len(ranges), len(sills)))
-        best_score = float('inf')
-        best_indices = (0, 0, 0)
+    def particle_swarm_optimize(self, x_train, y_train, z_train, x_test, y_test, z_test,
+                               nuggets_range, ranges_range, sills_range):
+        # 初始化粒子
+        lb = np.array([nuggets_range[0], ranges_range[0], sills_range[0]])
+        ub = np.array([nuggets_range[1], ranges_range[1], sills_range[1]])
+        pos = np.random.uniform(lb, ub, (self.particles, 3))
+        vel = np.zeros_like(pos)
+        pbest = pos.copy()
+        pbest_score = np.array([
+            self.evaluate_fitness(p[0], p[1], p[2], x_train, y_train, z_train, x_test, y_test, z_test)
+            for p in pos
+        ])
+        gbest_idx = np.argmin(pbest_score)
+        gbest = pbest[gbest_idx].copy()
+        gbest_score = pbest_score[gbest_idx]
 
-        # 预先计算启发因子（这里用参数空间均匀分布，启发因子可设为1）
-        heuristic = np.ones_like(pheromone)
+        for iter in range(self.iters):
+            r1 = np.random.rand(self.particles, 3)
+            r2 = np.random.rand(self.particles, 3)
+            vel = (self.w * vel +
+                   self.c1 * r1 * (pbest - pos) +
+                   self.c2 * r2 * (gbest - pos))
+            pos += vel
+            pos = np.clip(pos, lb, ub)
+            for i in range(self.particles):
+                score = self.evaluate_fitness(pos[i,0], pos[i,1], pos[i,2],
+                                              x_train, y_train, z_train, x_test, y_test, z_test)
+                if score < pbest_score[i]:
+                    pbest[i] = pos[i]
+                    pbest_score[i] = score
+                    if score < gbest_score:
+                        gbest = pos[i].copy()
+                        gbest_score = score
 
-        for iteration in range(self.iters):
-            scores = []
-            paths = []
-
-            for ant in range(self.ants):
-                # 计算每个参数的选择概率
-                prob_nugget = (pheromone.sum(axis=(1,2)) ** alpha) * (heuristic.sum(axis=(1,2)) ** beta)
-                prob_nugget /= prob_nugget.sum()
-                i = np.random.choice(len(nuggets), p=prob_nugget)
-
-                prob_range = (pheromone[i].sum(axis=1) ** alpha) * (heuristic[i].sum(axis=1) ** beta)
-                prob_range /= prob_range.sum()
-                j = np.random.choice(len(ranges), p=prob_range)
-
-                prob_sill = (pheromone[i, j] ** alpha) * (heuristic[i, j] ** beta)
-                prob_sill /= prob_sill.sum()
-                k = np.random.choice(len(sills), p=prob_sill)
-
-                # 评价当前参数组合
-                score = self.evaluate_fitness(
-                    nuggets[i], ranges[j], sills[k],
-                    x_train, y_train, z_train,
-                    x_test, y_test, z_test
-                )
-                scores.append(score)
-                paths.append((i, j, k))
-
-                # 更新全局最优
-                if score < best_score:
-                    best_score = score
-                    best_indices = (i, j, k)
-
-            # 信息素挥发
-            pheromone *= self.decay
-
-            # 信息素增强（分数越低，信息素增量越大）
-            for (i, j, k), score in zip(paths, scores):
-                pheromone[i, j, k] += 1.0 / (score + 1e-6)
-
-        i, j, k = best_indices
-        self.nuggets = nuggets[i]
-        self.ranges = ranges[j]
-        self.sills = sills[k]
-        return best_score, {
-            'nugget': nuggets[i],
-            'range': ranges[j],
-            'sill': sills[k]
+        self.nuggets, self.ranges, self.sills = gbest
+        return gbest_score, {
+            'nugget': gbest[0],
+            'range': gbest[1],
+            'sill': gbest[2]
         }
 
-
-    def interpolate_and_compare(self, x, y, z, optimized_params, default_params=None, grid_res=100):
+    def interpolate_and_compare(self, x, y, z, optimized_params, default_params=None, grid_res=100, target_layer=""):
         grid_x = np.linspace(x.min(), x.max(), grid_res)
         grid_y = np.linspace(y.min(), y.max(), grid_res)
         grid_xx, grid_yy = np.meshgrid(grid_x, grid_y)
@@ -156,7 +127,7 @@ class ACO_Krige_Optimizer:
         fig.colorbar(cs1, ax=axs[0, 0])
         cs2 = axs[0, 1].contourf(grid_xx, grid_yy, z_opt, cmap='viridis', levels=50)
         axs[0, 1].scatter(x, y, c=z, edgecolor='k', s=40)
-        axs[0, 1].set_title("Optimized by ACO")
+        axs[0, 1].set_title("Optimized by PSO")
         axs[0, 1].set_xlabel("X")
         axs[0, 1].set_ylabel("Y")
         fig.colorbar(cs2, ax=axs[0, 1])
@@ -173,27 +144,23 @@ class ACO_Krige_Optimizer:
         axs[1, 1].scatter(x, y, c='white', s=10)
         axs[1, 1].set_title("Prediction Variance (Optimized)")
         fig.colorbar(im1, ax=axs[1, 1], fraction=0.046, pad=0.04)
-        plt.suptitle(f"{target_layer}Kriging Interpolation & Variance Comparison", fontsize=18)
-        # plt.savefig(f"./pic/{target_layer}_krige_aco.png", dpi=300)
+        plt.suptitle(f"{target_layer} Kriging Interpolation & Variance Comparison", fontsize=18)
         plt.show()
 
     def run(self, data_path, target_layer="黄土"):
         (x_train, y_train, z_train), (x_test, y_test, z_test) = self.generate_data(data_path, target_layer=target_layer)
-        # 使用自适应参数空间
         nuggets_range, ranges_range, sills_range = self.auto_define_parameter_space(x_train, y_train, z_train, levels=10)
-
-        best_score, best_params = self.ant_colony_optimize(
+        best_score, best_params = self.particle_swarm_optimize(
             x_train, y_train, z_train,
             x_test, y_test, z_test,
-            nuggets_range, ranges_range, sills_range,
-            alpha=1.0, beta=2.0
+            nuggets_range, ranges_range, sills_range
         )
-        print("ACO最优参数:", best_params)
-        self.interpolate_and_compare(x_train, y_train, z_train, best_params)
+        print("PSO最优参数:", best_params)
+
+        self.interpolate_and_compare(x_train, y_train, z_train, best_params, target_layer=target_layer)
 
 if __name__ == "__main__":
-    target_layer = "砾石"
+    target_layer = "黄土"
     data_path = "./data/增强后的钻孔数据.xlsx"
-    # 增加蚂蚁数量和迭代次数
-    optimizer = ACO_Krige_Optimizer(iters=1000, ants=50, decay=0.8)
+    optimizer = PSO_Krige_Optimizer(iters=500, particles=30, w=0.7, c1=1.5, c2=1.5)
     optimizer.run(data_path, target_layer)
