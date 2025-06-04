@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr
-from sklearn.cluster import KMeans
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 class ACO_Krige_Optimizer:
@@ -32,9 +31,9 @@ class ACO_Krige_Optimizer:
 
     def define_parameter_space(self, x, y, z):
         domain_size = max(x) - min(x)
-        nuggets_range = np.linspace(0, np.var(z) * 0.8, 5)
-        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 5)
-        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 5)
+        nuggets_range = np.linspace(0, np.var(z) * 0.8, 10)
+        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 10)
+        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 10)
         return nuggets_range, ranges_range, sills_range
 
     # def auto_define_parameter_space(self, x, y, z, levels=5):
@@ -85,7 +84,11 @@ class ACO_Krige_Optimizer:
             )
             z_pred, _ = ok.execute('points', x_test, y_test)
             mse = np.mean((z_test - z_pred) ** 2)
-            return mse
+            # return mse
+            trend_corr, _ = spearmanr(z_pred, z_test)
+            penalty = (1 - trend_corr)**2  # 趋势越不一致，惩罚越大
+
+            return mse * (1 + penalty)  # 趋势反转会导致惩罚倍增
         except Exception:
             return 1e6
 
@@ -213,10 +216,15 @@ class ACO_Krige_Optimizer:
             alpha=1.0, beta=2.0
         )
         print("ACO最优参数:", best_params)
-        self.interpolate_and_compare(x_train, y_train, z_train, best_params)
+        df = pd.read_excel(data_path)
+        layer_df = df[df["地层"] == target_layer]
+        x = layer_df["X"].values.astype(np.float64)
+        y = layer_df["Y"].values.astype(np.float64)
+        z = layer_df["厚度"].values.astype(np.float64)
+        self.interpolate_and_compare(x, y, z, best_params)
 
 if __name__ == "__main__":
-    target_layer = "砾石"
+    target_layer = "填土"
     data_path = "./data/增强后的钻孔数据.xlsx"
     # 增加蚂蚁数量和迭代次数
     optimizer = ACO_Krige_Optimizer(iters=500, ants=30, decay=0.8)

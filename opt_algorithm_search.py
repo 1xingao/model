@@ -4,9 +4,10 @@ from opt.pso_krige_opt import PSO_Krige_Optimizer
 from opt.aco_krige_opt import ACO_Krige_Optimizer
 import src.default_krige as Default_Krige
 from pykrige.ok import OrdinaryKriging
+import pandas as pd
 
 
-def visualize_kriging_results(pso_optimizer, aco_optimizer, default_krige, train_data):
+def visualize_kriging_results(pso_optimizer, aco_optimizer, target_layer, train_data):
     # 获取参数
     pso_params = pso_optimizer.get_parameter()
     aco_params = aco_optimizer.get_parameter()
@@ -88,31 +89,27 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, default_krige, train
 
 
     # colorbar
-    cbar0 = fig.colorbar(cs0, ax=axes[0, :], orientation='horizontal', fraction=0.05, pad=0.18, aspect=40, shrink=0.95)
+    cbar0 = fig.colorbar(cs1, ax=axes[0, :], orientation='horizontal', fraction=0.05, pad=0.18, aspect=40, shrink=0.95)
     cbar0.set_label('插值值')
-    cbar1 = fig.colorbar(im0, ax=axes[1, :], orientation='horizontal', fraction=0.05, pad=0.18, aspect=40, shrink=0.95)
+    cbar1 = fig.colorbar(im1, ax=axes[1, :], orientation='horizontal', fraction=0.05, pad=0.18, aspect=40, shrink=0.95)
     cbar1.set_label('方差')
 
-    plt.suptitle("三种克里金插值与方差对比", fontsize=18)
+    plt.suptitle(f"三种克里金插值与方差对比（{target_layer}）", fontsize=18)
 
     plt.show()
 
 
 def main():
-    # 设置随机种子以确保结果可重复
-    np.random.seed(0)
-
     # 数据路径和目标层
     data_path = "./data/增强后的钻孔数据.xlsx"
-    target_layer = "砾石"
-
+    target_layer = "粉砂"
     # 生成数据
     pso_optimizer = PSO_Krige_Optimizer()
     aco_optimizer = ACO_Krige_Optimizer()
     default_krige = Default_Krige.Default_Krige()
 
-    train_data, test_data = pso_optimizer.generate_data(data_path, target_layer=target_layer)
-    
+    train_data, test_data = pso_optimizer.generate_data(data_path, seed=42, target_layer=target_layer)
+
     # 自动定义参数空间
     nuggets_range, ranges_range, sills_range = pso_optimizer.define_parameter_space(*train_data)
 
@@ -130,7 +127,12 @@ def main():
     # print("默认参数:", default_params)
 
     # 可视化三种克里金插值及其方差
-    visualize_kriging_results(pso_optimizer, aco_optimizer, default_krige, train_data)
+    df = pd.read_excel(data_path)
+    layer_df = df[df["地层"] == target_layer]
+    x = layer_df["X"].values.astype(np.float64)
+    y = layer_df["Y"].values.astype(np.float64)
+    z = layer_df["厚度"].values.astype(np.float64)
+    visualize_kriging_results(pso_optimizer, aco_optimizer, target_layer, (x, y, z))
 
 if __name__ == "__main__":
     main()

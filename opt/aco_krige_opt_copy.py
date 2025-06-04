@@ -12,8 +12,6 @@ def generate_data(data_path,target_layer="黄土", seed=0, n_points=30, train_ra
     # z = np.sin(x / 10.0) + np.cos(y / 10.0) + np.random.normal(0, 0.1, n_points)
     df = pd.read_excel(data_path)
 
-    # Step 2: 提取目标地层（例如 "黄土"）的坐标和厚度
-
     layer_df = df[df["地层"] == target_layer]
 
     # 获取坐标和厚度
@@ -36,19 +34,17 @@ def define_parameter_space(x,y,z):
 
 def auto_define_parameter_space(x, y, z, levels=5):
 
-
-    # nugget: 微小变异，一般小
     var_z = np.var(z)
     nuggets = np.linspace(0, var_z * 0.5, levels)
 
-    # range: 空间影响范围
+
     coords = np.vstack([x, y]).T
     dists = pdist(coords)
     range_min = np.percentile(dists, 5)
     range_max = np.percentile(dists, 95)
     ranges = np.linspace(range_min, range_max, levels)
 
-    # sill: 方差范围
+
     sills = np.linspace(var_z * 0.5, var_z * 2.0, levels)
 
     return nuggets, ranges, sills

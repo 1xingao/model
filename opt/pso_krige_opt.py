@@ -33,9 +33,9 @@ class PSO_Krige_Optimizer:
         return (x[train_idx], y[train_idx], z[train_idx]), (x[test_idx], y[test_idx], z[test_idx])
     def define_parameter_space(self, x, y, z):
         domain_size = max(x) - min(x)
-        nuggets_range = np.linspace(0, np.var(z) * 0.8, 5)
-        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 5)
-        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 5)
+        nuggets_range = np.linspace(0, np.var(z) * 0.8, 10)
+        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 10)
+        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 10)
         return nuggets_range, ranges_range, sills_range
     # def auto_define_parameter_space(self, x, y, z, levels=5):
     #     var_z = np.var(z)
