@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr
-
+from sklearn.cluster import KMeans
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 class ACO_Krige_Optimizer:
@@ -16,41 +16,65 @@ class ACO_Krige_Optimizer:
         self.ranges = None
         self.sills = None
 
-    def generate_data(self, data_path, target_layer="黄土", seed=0, n_points=30, train_ratio=0.7):
+    def generate_data(self, data_path, target_layer="黄土", seed=17,  train_ratio=0.7):
         np.random.seed(seed)
         df = pd.read_excel(data_path)
         layer_df = df[df["地层"] == target_layer]
         x = layer_df["X"].values.astype(np.float64)
         y = layer_df["Y"].values.astype(np.float64)
         z = layer_df["厚度"].values.astype(np.float64)
+        n_points = len(x)
         n_train = int(n_points * train_ratio)
         train_idx = np.random.choice(n_points, n_train, replace=False)
         test_idx = np.setdiff1d(np.arange(n_points), train_idx)
+        
         return (x[train_idx], y[train_idx], z[train_idx]), (x[test_idx], y[test_idx], z[test_idx])
 
     def define_parameter_space(self, x, y, z):
         domain_size = max(x) - min(x)
-        nuggets_range = np.linspace(0, np.var(z) * 0.8, 10)
-        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 10)
-        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 10)
+        nuggets_range = np.linspace(0, np.var(z) * 0.8, 5)
+        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 5)
+        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 5)
         return nuggets_range, ranges_range, sills_range
 
+    # def auto_define_parameter_space(self, x, y, z, levels=5):
+    #     var_z = np.var(z)
+    #     nuggets_range = np.linspace(0, var_z * 0.5, levels)
+    #     coords = np.vstack([x, y]).T
+    #     dists = pdist(coords)
+    #     range_min = np.percentile(dists, 5)
+    #     range_max = np.percentile(dists, 95)
+    #     ranges_range = np.linspace(range_min, range_max, levels)
+    #     sills_range = np.linspace(var_z * 0.5, var_z * 2.0, levels)
+    #     return nuggets_range, ranges_range, sills_range
     def auto_define_parameter_space(self, x, y, z, levels=5):
         var_z = np.var(z)
-        nuggets_range = np.linspace(0, var_z * 0.5, levels)
+        # 计算区域最大距离（约束变程上限）
+        domain_size = np.sqrt((x.max()-x.min())**2 + (y.max()-y.min())**2)
+        
+        nuggets_range = [0, var_z * 0.5]
         coords = np.vstack([x, y]).T
         dists = pdist(coords)
         range_min = np.percentile(dists, 5)
-        range_max = np.percentile(dists, 95)
-        ranges_range = np.linspace(range_min, range_max, levels)
-        sills_range = np.linspace(var_z * 0.5, var_z * 2.0, levels)
+        range_max = min(np.percentile(dists, 95), domain_size*1.2)  # 关键约束
+        
+        ranges_range = [range_min, range_max]
+        sills_range = [max(var_z*0.3, 0.1), var_z*2.0]  # 添加最小值约束
         return nuggets_range, ranges_range, sills_range
     
+
     def get_parameter(self):
         return self.nuggets, self.ranges, self.sills
 
     def evaluate_fitness(self, nugget, range_, sill, x_train, y_train, z_train, x_test, y_test, z_test):
-
+        # # 参数有效性检查（核心修复）
+        # domain_size = np.sqrt((x_train.max()-x_train.min())**2 + (y_train.max()-y_train.min())**2)
+        # if range_ > domain_size * 1.5:  # 变程过大
+        #     return 1e6
+        # if sill < nugget + 1e-6:  # 基台值过小
+        #     return 1e6
+        # if abs(sill - nugget) < 1e-6:  # 部分基台值无效
+        #     return 1e6
         try:
             ok = OrdinaryKriging(
                 x_train, y_train, z_train,
@@ -66,7 +90,7 @@ class ACO_Krige_Optimizer:
             return 1e6
 
     def ant_colony_optimize(self, x_train, y_train, z_train, x_test, y_test, z_test,
-                            nuggets, ranges, sills, alpha=1.0, beta=2.0):
+                            nuggets, ranges, sills, alpha=1.1, beta = 1.5):
         
         pheromone = np.ones((len(nuggets), len(ranges), len(sills)))
         best_score = float('inf')
@@ -180,7 +204,7 @@ class ACO_Krige_Optimizer:
     def run(self, data_path, target_layer="黄土"):
         (x_train, y_train, z_train), (x_test, y_test, z_test) = self.generate_data(data_path, target_layer=target_layer)
         # 使用自适应参数空间
-        nuggets_range, ranges_range, sills_range = self.auto_define_parameter_space(x_train, y_train, z_train, levels=10)
+        nuggets_range, ranges_range, sills_range = self.define_parameter_space(x_train, y_train, z_train)
 
         best_score, best_params = self.ant_colony_optimize(
             x_train, y_train, z_train,
@@ -195,5 +219,5 @@ if __name__ == "__main__":
     target_layer = "砾石"
     data_path = "./data/增强后的钻孔数据.xlsx"
     # 增加蚂蚁数量和迭代次数
-    optimizer = ACO_Krige_Optimizer(iters=1000, ants=50, decay=0.8)
+    optimizer = ACO_Krige_Optimizer(iters=500, ants=30, decay=0.8)
     optimizer.run(data_path, target_layer)

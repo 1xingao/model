@@ -3,6 +3,7 @@ from pykrige.ok import OrdinaryKriging
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.spatial.distance import pdist
+from sklearn.cluster import KMeans
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
@@ -17,30 +18,63 @@ class PSO_Krige_Optimizer:
         self.ranges = None
         self.sills = None
 
-    def generate_data(self, data_path, target_layer="黄土", seed=0, n_points=30, train_ratio=0.7):
+    def generate_data(self, data_path, target_layer="黄土", seed=17, train_ratio=0.7):
         np.random.seed(seed)
         df = pd.read_excel(data_path)
         layer_df = df[df["地层"] == target_layer]
         x = layer_df["X"].values.astype(np.float64)
         y = layer_df["Y"].values.astype(np.float64)
         z = layer_df["厚度"].values.astype(np.float64)
+        n_points = len(x)
         n_train = int(n_points * train_ratio)
         train_idx = np.random.choice(n_points, n_train, replace=False)
         test_idx = np.setdiff1d(np.arange(n_points), train_idx)
+        
         return (x[train_idx], y[train_idx], z[train_idx]), (x[test_idx], y[test_idx], z[test_idx])
-
-    def auto_define_parameter_space(self, x, y, z, levels=5):
-        var_z = np.var(z)
-        nuggets_range = [0, var_z * 0.5]
-        coords = np.vstack([x, y]).T
-        dists = pdist(coords)
-        range_min = np.percentile(dists, 5)
-        range_max = np.percentile(dists, 95)
-        ranges_range = [range_min, range_max]
-        sills_range = [var_z * 0.5, var_z * 2.0]
+    def define_parameter_space(self, x, y, z):
+        domain_size = max(x) - min(x)
+        nuggets_range = np.linspace(0, np.var(z) * 0.8, 5)
+        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 5)
+        sills_range   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 5)
         return nuggets_range, ranges_range, sills_range
+    # def auto_define_parameter_space(self, x, y, z, levels=5):
+    #     var_z = np.var(z)
+    #     nuggets_range = [0, var_z * 0.5]
+    #     coords = np.vstack([x, y]).T
+    #     dists = pdist(coords)
+    #     range_min = np.percentile(dists, 5)
+    #     range_max = np.percentile(dists, 95)
+    #     ranges_range = [range_min, range_max]
+    #     sills_range = [var_z * 0.5, var_z * 2.0]
+    #     return nuggets_range, ranges_range, sills_range
+    def auto_define_parameter_space(self, x, y, z, levels=5):
+        # var_z = np.var(z)
+        # # 计算区域最大距离（约束变程上限）
+        # domain_size = np.sqrt((x.max()-x.min())**2 + (y.max()-y.min())**2)
+        
+        # nuggets_range = [0, var_z * 0.5]
+        # coords = np.vstack([x, y]).T
+        # dists = pdist(coords)
+        # range_min = np.percentile(dists, 5)
+        # range_max = min(np.percentile(dists, 95), domain_size*1.2)  # 关键约束
+        
+        # ranges_range = [range_min, range_max]
+        # sills_range = [max(var_z*0.3, 0.1), var_z*2.0]  # 添加最小值约束
+        domain_size = max(x) - min(x)
+        nuggets = np.linspace(0, np.var(z) * 0.8, 10)
+        ranges = np.linspace(0.05 * domain_size, 2.0 * domain_size, 10)
+        sills   = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 10)
+        return nuggets, ranges, sills
 
     def evaluate_fitness(self, nugget, range_, sill, x_train, y_train, z_train, x_test, y_test, z_test):
+        # # 参数有效性检查（核心修复）
+        # domain_size = np.sqrt((x_train.max()-x_train.min())**2 + (y_train.max()-y_train.min())**2)
+        # if range_ > domain_size * 1.5:  # 变程过大
+        #     return 1e6
+        # if sill < nugget + 1e-6:  # 基台值过小
+        #     return 1e6
+        # if abs(sill - nugget) < 1e-6:  # 部分基台值无效
+        #     return 1e6
         try:
             ok = OrdinaryKriging(
                 x_train, y_train, z_train,
@@ -54,7 +88,8 @@ class PSO_Krige_Optimizer:
             return mse
         except Exception:
             return 1e6
-
+    def get_parameter(self):
+        return self.nuggets, self.ranges, self.sills
     def particle_swarm_optimize(self, x_train, y_train, z_train, x_test, y_test, z_test,
                                nuggets_range, ranges_range, sills_range):
         # 初始化粒子
@@ -149,7 +184,7 @@ class PSO_Krige_Optimizer:
 
     def run(self, data_path, target_layer="黄土"):
         (x_train, y_train, z_train), (x_test, y_test, z_test) = self.generate_data(data_path, target_layer=target_layer)
-        nuggets_range, ranges_range, sills_range = self.auto_define_parameter_space(x_train, y_train, z_train, levels=10)
+        nuggets_range, ranges_range, sills_range = self.define_parameter_space(x_train, y_train, z_train)
         best_score, best_params = self.particle_swarm_optimize(
             x_train, y_train, z_train,
             x_test, y_test, z_test,
@@ -162,5 +197,5 @@ class PSO_Krige_Optimizer:
 if __name__ == "__main__":
     target_layer = "黄土"
     data_path = "./data/增强后的钻孔数据.xlsx"
-    optimizer = PSO_Krige_Optimizer(iters=500, particles=30, w=0.7, c1=1.5, c2=1.5)
+    optimizer = PSO_Krige_Optimizer(iters=1000, particles=30, w=0.7, c1=1.5, c2=1.5)
     optimizer.run(data_path, target_layer)

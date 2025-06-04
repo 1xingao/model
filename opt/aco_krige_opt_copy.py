@@ -6,7 +6,7 @@ from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr
 
 def generate_data(data_path,target_layer="黄土", seed=0, n_points=30, train_ratio=0.7):
-    np.random.seed(seed)
+    np.random.seed(17)
     # x = np.random.uniform(0, 100, n_points)
     # y = np.random.uniform(0, 100, n_points)
     # z = np.sin(x / 10.0) + np.cos(y / 10.0) + np.random.normal(0, 0.1, n_points)
@@ -65,7 +65,9 @@ def evaluate_fitness(nugget, sill, rang, x_train, y_train, z_train, x_test, y_te
         )
         z_pred, _ = ok.execute('points', x_test, y_test)
         mse = np.mean((z_test - z_pred)**2)
+        print(mse)
         return mse
+    
         # # 加入趋势惩罚项
         # trend_corr, _ = spearmanr(z_pred, z_test)
         # penalty = (1 - trend_corr)**2  # 趋势越不一致，惩罚越大
@@ -81,7 +83,7 @@ def ant_colony_optimize(x_train, y_train, z_train, x_test, y_test, z_test,
     best_score = float('inf')
     best_indices = None
 
-    for _ in range(iters):
+    for it in range(iters):
         scores = []
         paths = []
 
@@ -91,10 +93,10 @@ def ant_colony_optimize(x_train, y_train, z_train, x_test, y_test, z_test,
             k = np.random.choice(len(sills), p=pheromone[i,j]/pheromone[i,j].sum())
 
             score = evaluate_fitness(
-                
+                nuggets[i], ranges[j], sills[k],
                 x_train, y_train, z_train,
                 x_test, y_test, z_test,
-                nuggets[i], ranges[j], sills[k],
+                
             )
 
             scores.append(score)
@@ -108,7 +110,9 @@ def ant_colony_optimize(x_train, y_train, z_train, x_test, y_test, z_test,
 
         # 全局最优更新
         min_idx = np.argmin(scores)
+        
         if scores[min_idx] < best_score:
+
             best_score = scores[min_idx]
             best_indices = paths[min_idx]
 
@@ -173,7 +177,7 @@ def interpolate_and_compare(x, y, z, optimized_params, default_params=None, grid
         x, y, z,
         variogram_model="spherical",
         variogram_parameters=optimized_params,
-        verbose=False,
+        verbose=True,
         enable_plotting=False
     )
     z_opt, ss_opt = ok_opt.execute("grid", grid_x, grid_y)
@@ -226,7 +230,7 @@ def run(data_path,target_layer="黄土"):
     # nuggets, ranges, sills = auto_define_parameter_space(x_train, y_train, z_train)
 
 
-    # 3. 执行蚁群优化
+    #  3. 执行蚁群优化
     best_score, best_params = ant_colony_optimize(
         x_train, y_train, z_train,
         x_test, y_test, z_test,
@@ -234,7 +238,8 @@ def run(data_path,target_layer="黄土"):
         iters=500, ants=20, decay=0.8
     )
     
-    # best_params = {'nugget': 1.03738008, 'range': 29.20535359, 'sill': 1.62593025}
+    # best_params = {'nugget': nuggets[2], 'range': ranges[6], 'sill': sills[3]}
+
     # 4. 输出最优解结果
     print("最优参数:", best_params)
 
