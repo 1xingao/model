@@ -21,12 +21,13 @@ class Base_Krige_Optimizer:
         n_train = int(n_points * train_ratio)
         train_idx = np.random.choice(n_points, n_train, replace=False)
         test_idx = np.setdiff1d(np.arange(n_points), train_idx)
+        print(len(train_idx), "训练点，", len(test_idx), "测试点")
         return (x[train_idx], y[train_idx], z[train_idx]), (x[test_idx], y[test_idx], z[test_idx])
 
     def define_parameter_space(self, x, y, z):
         domain_size = max(x) - min(x)
         nuggets_range = np.linspace(0, np.var(z) * 0.8, 10)
-        ranges_range = np.linspace(0.05 * domain_size, 2.0 * domain_size, 10)
+        ranges_range = np.linspace(0.05 * domain_size, 1.5 * domain_size, 10)
         sills_range = np.linspace(0.5 * np.var(z), 3.0 * np.var(z), 10)
         return nuggets_range, ranges_range, sills_range
 
@@ -44,6 +45,7 @@ class Base_Krige_Optimizer:
             )
             z_pred, _ = ok.execute('points', x_test, y_test)
             mse = np.mean((z_test - z_pred) ** 2)
+            # 趋势惩罚
             trend_corr, _ = spearmanr(z_pred, z_test)
             penalty = (1 - trend_corr) ** 2
             return mse * (1 + penalty)
