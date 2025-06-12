@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from opt.pso_krige_opt import PSO_Krige_Optimizer
-from opt.aco_krige_opt import ACO_Krige_Optimizer
-from opt.ga_krige_opt import GA_Krige_Optimizer
+from pso_krige_opt import PSO_Krige_Optimizer
+from aco_krige_opt import ACO_Krige_Optimizer
+from ga_krige_opt import GA_Krige_Optimizer
 
 from pykrige.ok import OrdinaryKriging
 

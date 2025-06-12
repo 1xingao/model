@@ -1,7 +1,7 @@
 import numpy as np
 from pykrige.ok import OrdinaryKriging
 import matplotlib.pyplot as plt
-from .base_krige_opt import Base_Krige_Optimizer
+from base_krige_opt import Base_Krige_Optimizer
 
 plt.rcParams['font.sans-serif'] = ['SimHei']
 
