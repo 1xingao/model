@@ -20,7 +20,7 @@ labels = []
 for _, row in df.iterrows():
     x, y = row['X'], row['Y']
     z_top = row['Z_top'] if 'Z_top' in row else 0  # 若无Z_top则假定为0
-    thickness = row['厚度']
+    thickness = row['厚度']*100
     z_bottom = z_top + thickness
     # 采样若干点（可调，默认每层采样5个点）
     for frac in np.linspace(0, 1, 5):
@@ -71,4 +71,19 @@ ax.set_title('SVM隐式三维地质建模')
 ax.legend(loc='upper right', fontsize=8)
 plt.tight_layout()
 plt.show()
+
+# 8. PyVista三维可视化
+grid_points_df = pd.DataFrame(grid_points, columns=['X', 'Y', 'Z'])
+grid_points_df['Labels'] = pred_labels.ravel(order='C')
+point_cloud = pv.PolyData(grid_points_df[['X', 'Y', 'Z']].values)
+
+# 保存点云数据为 CSV 格式
+csv_path = os.path.join(os.path.dirname(__file__), '../data/point_cloud.csv')
+grid_points_df.to_csv(csv_path, index=False)
+print(f"点云数据已保存为 CSV 格式: {csv_path}")
+
+# 保存点云数据为 PLY 格式
+ply_path = os.path.join(os.path.dirname(__file__), '../data/point_cloud.ply')
+point_cloud.save(ply_path)
+print(f"点云数据已保存为 PLY 格式: {ply_path}")
 
