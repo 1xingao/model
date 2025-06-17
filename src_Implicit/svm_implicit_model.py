@@ -38,7 +38,7 @@ labels_encoded = le.fit_transform(labels)
 x_min, x_max = points[:,0].min(), points[:,0].max()
 y_min, y_max = points[:,1].min(), points[:,1].max()
 z_min, z_max = points[:,2].min(), points[:,2].max()
-grid_res = 50 # 可调
+grid_res = 100 # 可调
 xx, yy, zz = np.meshgrid(
     np.linspace(x_min, x_max, grid_res),
     np.linspace(y_min, y_max, grid_res),
