@@ -17,16 +17,20 @@ df = pd.read_excel(data_path)
 # 2. 生成三维点集（每层分解为多个点，z为地层底面）
 points = []
 labels = []
+z_top = 0  # 初始地层顶面高度
 for _, row in df.iterrows():
+
     x, y = row['X'], row['Y']
-    z_top = row['Z_top'] if 'Z_top' in row else 0  # 若无Z_top则假定为0
-    thickness = row['厚度']*100
+    if row['地层'] == '填土':
+        z_top = 0
+    thickness = row['厚度']*10
     z_bottom = z_top + thickness
     # 采样若干点（可调，默认每层采样5个点）
     for frac in np.linspace(0, 1, 5):
         z = z_top + frac * (z_bottom - z_top)
         points.append([x, y, z])
         labels.append(row['地层'])
+    z_top = z_bottom  # 更新地层顶面高度
 points = np.array(points)
 labels = np.array(labels)
 
@@ -82,8 +86,4 @@ csv_path = os.path.join(os.path.dirname(__file__), '../data/point_cloud.csv')
 grid_points_df.to_csv(csv_path, index=False)
 print(f"点云数据已保存为 CSV 格式: {csv_path}")
 
-# 保存点云数据为 PLY 格式
-ply_path = os.path.join(os.path.dirname(__file__), '../data/point_cloud.ply')
-point_cloud.save(ply_path)
-print(f"点云数据已保存为 PLY 格式: {ply_path}")
 
