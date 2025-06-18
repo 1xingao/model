@@ -39,12 +39,12 @@ def model_krige(model,df):
                 "厚度": float(z_pred[0])
             })
     return predicted_data
-    # 创建 DataFrame 并与原始数据合并
+
 def visualization_data(predicted_data,df):
     predicted_df = pd.DataFrame(predicted_data)
     combined_df = pd.concat([df, predicted_df], ignore_index=True)
 
-    # 按钻孔编号分组展示
+
     grouped_predicted_df = predicted_df.groupby("钻孔编号")
 
     plt.figure(figsize=(20, 8))

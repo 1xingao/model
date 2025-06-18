@@ -12,15 +12,14 @@ def plot_semivariogram(x, y, z, variogram_model='spherical', variogram_parameter
     """
     绘制实验半方差与理论变差函数曲线
     """
-    
-    # 1. 计算所有点对的距离和半方差
+
     coords = np.vstack((x, y)).T
     dists = squareform(pdist(coords))
     semivariances = 0.5 * (z[:, None] - z[None, :]) ** 2
     triu_indices = np.triu_indices_from(dists, k=1)
     h = dists[triu_indices]
     gamma = semivariances[triu_indices]
-    # 2. 按距离分组
+
     bins = np.linspace(h.min(), h.max(), nlags + 1)
     bin_indices = np.digitize(h, bins)
     bin_centers = []
@@ -32,7 +31,7 @@ def plot_semivariogram(x, y, z, variogram_model='spherical', variogram_parameter
             gamma_means.append(gamma[mask].mean())
     bin_centers = np.array(bin_centers)
     gamma_means = np.array(gamma_means)
-    # 3. 理论变差函数
+
     def spherical(h, nugget, rang, sill):
         h = np.array(h)
         y = np.piecewise(
@@ -53,7 +52,7 @@ def plot_semivariogram(x, y, z, variogram_model='spherical', variogram_parameter
     else:
         h_fit = None
         gamma_fit = None
-    # 4. 绘图
+
     if ax is None:
         ax = plt.gca()
     ax.scatter(bin_centers, gamma_means, color='b', label='实验半方差' if label is None else f'{label} 实验半方差')
@@ -71,14 +70,14 @@ def plot_all_pairs_semivariogram(x, y, z, variogram_model='spherical', variogram
     直接绘制所有点对的距离和半方差的散点图，并可叠加理论变差函数曲线
     """
     from scipy.spatial.distance import pdist, squareform
-    # 1. 计算所有点对的距离和半方差
+
     coords = np.vstack((x, y)).T
     dists = squareform(pdist(coords))
     semivariances = 0.5 * (z[:, None] - z[None, :]) ** 2
     triu_indices = np.triu_indices_from(dists, k=1)
     h = dists[triu_indices]
     gamma = semivariances[triu_indices]
-    # 2. 理论变差函数
+
     def spherical(h, nugget, rang, sill):
         h = np.array(h)
         y = np.piecewise(
@@ -99,7 +98,7 @@ def plot_all_pairs_semivariogram(x, y, z, variogram_model='spherical', variogram
     else:
         h_fit = None
         gamma_fit = None
-    # 3. 绘图
+
     if ax is None:
         ax = plt.gca()
     ax.scatter(h, gamma, color='b', s=10, alpha=0.5, label='所有点对' if label is None else f'{label} 所有点对')
@@ -113,19 +112,18 @@ def plot_all_pairs_semivariogram(x, y, z, variogram_model='spherical', variogram
 
 
 def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target_layer, train_data):
-    # 获取参数
+
     pso_params = pso_optimizer.get_parameter()
     aco_params = aco_optimizer.get_parameter()
     ga_params = ga_optimizer.get_parameter()
 
-    # 生成网格
+
     x, y, z = train_data
     grid_res = 100
     grid_x = np.linspace(x.min(), x.max(), grid_res)
     grid_y = np.linspace(y.min(), y.max(), grid_res)
     grid_xx, grid_yy = np.meshgrid(grid_x, grid_y)
 
-    # PSO 克里金插值
     ok_pso = OrdinaryKriging(
         x, y, z,
         variogram_model='spherical',
@@ -165,7 +163,7 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target
     )
     default_grid, default_var = ok_default.execute('grid', grid_x, grid_y)
 
-    # 可视化
+
     fig, axes = plt.subplots(2, 4, figsize=(24, 12), constrained_layout=True)
     vmin = min(np.nanmin(pso_grid), np.nanmin(aco_grid), np.nanmin(ga_grid), np.nanmin(default_grid))
     vmax = max(np.nanmax(pso_grid), np.nanmax(aco_grid), np.nanmax(ga_grid), np.nanmax(default_grid))
@@ -173,7 +171,7 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target
     var_vmax = max(np.nanmax(pso_var), np.nanmax(aco_var), np.nanmax(ga_var), np.nanmax(default_var))
     extent = (grid_x.min(), grid_x.max(), grid_y.min(), grid_y.max())
 
-    # 主图 contourf
+
     cs0 = axes[0, 0].contourf(grid_xx, grid_yy, pso_grid, cmap='viridis', levels=50, vmin=vmin, vmax=vmax)
     axes[0, 0].scatter(x, y, c=z, edgecolor='k', s=40)
     axes[0, 0].set_title('PSO 克里金插值')
@@ -194,7 +192,6 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target
     axes[0, 3].set_title('默认克里金插值')
 
 
-    # 方差图 imshow
     im0 = axes[1, 0].imshow(pso_var, origin='lower', extent=extent, cmap='magma', vmin=var_vmin, vmax=var_vmax, aspect='equal')
     axes[1, 0].scatter(x, y, c='white', s=10)
     axes[1, 0].set_title('PSO 方差')
@@ -215,7 +212,7 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target
     axes[1, 3].set_title('默认方差')
 
 
-    # colorbar
+
     cbar0 = fig.colorbar(cs1, ax=axes[0, :], orientation='horizontal', fraction=0.05, pad=0.18, aspect=40, shrink=0.95)
     cbar0.set_label('插值值')
     cbar1 = fig.colorbar(im1, ax=axes[1, :], orientation='horizontal', fraction=0.05, pad=0.18, aspect=40, shrink=0.95)
@@ -253,10 +250,10 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target
 
 
 def main():
-    # 数据路径和目标层
+
     data_path = "./data/随机分布钻孔数据.xlsx"
     target_layer = "粉土"
-    # 生成数据
+
     iters = 500
     pso_optimizer = PSO_Krige_Optimizer(iters)
     aco_optimizer = ACO_Krige_Optimizer(iters)
@@ -264,18 +261,15 @@ def main():
 
     train_data, test_data = pso_optimizer.generate_data(data_path, seed=0, target_layer=target_layer)
 
-    # 自动定义参数空间
     nuggets_range, ranges_range, sills_range = pso_optimizer.define_parameter_space(*train_data)
 
-    # PSO 优化
     pso_optimizer.particle_swarm_optimize(*train_data, *test_data, nuggets_range, ranges_range, sills_range)
     print("PSO 最优参数:", list(pso_optimizer.get_parameter()))
 
-    # ACO 优化
+
     aco_optimizer.ant_colony_optimize(*train_data, *test_data, nuggets_range, ranges_range, sills_range)
     print("ACO 最优参数:", list(aco_optimizer.get_parameter()))
 
-    # GA 优化
     ga_optimizer.genetic_optimize(*train_data, *test_data, nuggets_range, ranges_range, sills_range)
     print("GA 最优参数:", list(ga_optimizer.get_parameter()))
 

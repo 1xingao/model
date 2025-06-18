@@ -8,11 +8,10 @@ n_points = 30
 pot = np.random.uniform(0, 10, (n_points, 2))  # 随机 2D 空间坐标
 z = np.sin(pot[:, 0] / 2) + np.cos(pot[:, 1] / 3) + np.random.normal(0, 0.2, n_points)  # 模拟属性值
 
-# 创建 Ordinary Kriging 对象，使用默认变异函数模型（线性、球状、指数等可选）
+
 OK = OrdinaryKriging(
     pot[:,0],pot[:,1] ,z,
-    variogram_model="spherical",  # 可选: linear, exponential, gaussian
-    verbose=False,
+    variogram_model="spherical",  
     enable_plotting=True
 )
 

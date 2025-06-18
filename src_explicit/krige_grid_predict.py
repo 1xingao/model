@@ -8,12 +8,12 @@ plt.rcParams['font.sans-serif'] = ['SimHei']
 df = pd.read_excel("./data/钻孔数据.xlsx")
 layers = df["地层"].unique()
 
-# 设置网格范围
+
 grid_x = np.linspace(df["X"].min(), df["X"].max(), 100)
 grid_y = np.linspace(df["Y"].min(), df["Y"].max(), 100)
 grid_xx, grid_yy = np.meshgrid(grid_x, grid_y)
 
-# 每行最多显示的子图数量
+
 cols = 3
 rows = int(np.ceil(len(layers) / cols))
 
@@ -44,7 +44,6 @@ for idx, layer in enumerate(layers):
     fig.colorbar(c, ax=ax, label="厚度 (m)")
     ax.grid(True)
 
-# 如果子图比地层多，关闭多余的子图
 for j in range(len(layers), len(axs)):
     fig.delaxes(axs[j])
 
