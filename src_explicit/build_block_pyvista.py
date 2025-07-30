@@ -2,7 +2,7 @@ import numpy as np
 import pyvista as pv
 from scipy.spatial import Delaunay
 
-
+# 测试数据
 def generate_irregular_xy(n_points=1000, x_range=(0, 1000), y_range=(0, 1000), seed=42):
     np.random.seed(seed)
     x = np.random.uniform(*x_range, n_points)
@@ -27,6 +27,16 @@ def generate_layers_from_xy(xy):
     layer_2 = np.column_stack((x, y, z_layer2))
     lower = np.column_stack((x, y, z_bot))
     return [upper, layer_1, layer_2, lower]
+
+# 实际数据
+def generate_layers_from_xyz(xy,z_list):#z_list 中的数据是每层相交点的坐标
+    x, y = xy[:, 0], xy[:, 1]
+    layer_list = []
+    for z in z_list:
+        layer = np.column_stack((x, y, z))
+        layer_list.append(layer)
+    
+    return layer_list
 
 def build_prism_blocks(upper, lower):
     tri = Delaunay(upper[:, :2])
@@ -92,9 +102,11 @@ def main():
     visualization_block(xy)
 
 
+def execute(xy,z_list):
+    visualization_block(xy,z_list)
 
-def visualization_block(xy):
-    layer_list = generate_layers_from_xy(xy)
+def visualization_block(xy,z_list):
+    layer_list = generate_layers_from_xyz(xy,z_list)
     # 构建两层块体
     block_list = []
     for i in range(len(layer_list)-1):
@@ -111,7 +123,7 @@ def visualization_block(xy):
     # 可视化
     plotter = pv.Plotter()
     plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=0.9, show_edges=True, label='layer2-Lower')
-    plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=1, show_edges=True, label='layer1-layer2')
+    plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=0.9, show_edges=True, label='layer1-layer2')
     plotter.add_mesh(mesh_list[0], color='lightgreen', opacity=0.9, show_edges=True, label='Upper-layer1')
 
     plotter.add_legend()
