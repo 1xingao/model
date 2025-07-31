@@ -2,34 +2,38 @@ import numpy as np
 import pandas as pd
 from pykrige.ok import OrdinaryKriging
 import build_block_pyvista
-
-upper_tin = pd.read_csv('../data/upper_tin.csv')  # 上层点集
-lower_tin = pd.read_csv('../data/lower_tin.csv')  # 下层点集
-
-
-x_min = min(upper_tin['x'].min(), lower_tin['x'].min())
-x_max = max(upper_tin['x'].max(), lower_tin['x'].max())
-y_min = min(upper_tin['y'].min(), lower_tin['y'].min())
-y_max = max(upper_tin['y'].max(), lower_tin['y'].max())
-
-n_x, n_y = 50, 50 
-xi = np.linspace(x_min, x_max, n_x)
-yi = np.linspace(y_min, y_max, n_y)
-grid_x, grid_y = np.meshgrid(xi, yi)
-grid_points = np.c_[grid_x.ravel(), grid_y.ravel()]
+def main():
+    upper_tin = pd.read_csv('../data/upper_tin.csv')  # 上层点集
+    lower_tin = pd.read_csv('../data/lower_tin.csv')  # 下层点集
 
 
-ok_upper = OrdinaryKriging(
-    upper_tin['x'], upper_tin['y'], upper_tin['z'], variogram_model='linear', verbose=False, enable_plotting=False)
-z_upper, _ = ok_upper.execute('points', grid_points[:, 0], grid_points[:, 1])
+    x_min = min(upper_tin['x'].min(), lower_tin['x'].min())
+    x_max = max(upper_tin['x'].max(), lower_tin['x'].max())
+    y_min = min(upper_tin['y'].min(), lower_tin['y'].min())
+    y_max = max(upper_tin['y'].max(), lower_tin['y'].max())
 
-ok_lower = OrdinaryKriging(
-    lower_tin['x'], lower_tin['y'], lower_tin['z'], variogram_model='linear', verbose=False, enable_plotting=False)
-z_lower, _ = ok_lower.execute('points', grid_points[:, 0], grid_points[:, 1])
+    n_x, n_y = 50, 50 
+    xi = np.linspace(x_min, x_max, n_x)
+    yi = np.linspace(y_min, y_max, n_y)
+    grid_x, grid_y = np.meshgrid(xi, yi)
+    grid_points = np.c_[grid_x.ravel(), grid_y.ravel()]
 
-# 使用其他文件的pyvista成品进行替代
-Block = build_block_pyvista.Block(np.column_stack((xi, yi)), [z_upper, z_lower])
-Block.execute()
+
+    ok_upper = OrdinaryKriging(
+        upper_tin['x'], upper_tin['y'], upper_tin['z'], variogram_model='linear', verbose=False, enable_plotting=False)
+    z_upper, _ = ok_upper.execute('points', grid_points[:, 0], grid_points[:, 1])
+
+    ok_lower = OrdinaryKriging(
+        lower_tin['x'], lower_tin['y'], lower_tin['z'], variogram_model='linear', verbose=False, enable_plotting=False)
+    z_lower, _ = ok_lower.execute('points', grid_points[:, 0], grid_points[:, 1])
+
+    # 使用其他文件的pyvista成品进行替代
+    Block = build_block_pyvista.Block(np.column_stack((xi, yi)), [z_upper, z_lower])
+    Block.execute()
+
+
+if __name__ == "__main__":
+    main()
 # tri = Delaunay(grid_points)
 # faces = np.hstack((np.full((tri.simplices.shape[0], 1), 3), tri.simplices)).astype(np.int32)
 
