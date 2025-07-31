@@ -3,34 +3,9 @@ import pyvista as pv
 from scipy.spatial import Delaunay
 
 class Block:
-    def __init__(self, xy, z_list):
+    def __init__(self, xy=None, z_list=None):
         self.xy = xy
         self.z_list = z_list
-    # 测试数据
-    def generate_irregular_xy(self,n_points=1000, x_range=(0, 1000), y_range=(0, 1000), seed=42):
-        np.random.seed(seed)
-        x = np.random.uniform(*x_range, n_points)
-        y = np.random.uniform(*y_range, n_points)
-        return np.column_stack((x, y))
-
-    def generate_layers_from_xy(self,xy):
-        x, y = xy[:, 0], xy[:, 1]
-        z_top = 100 - 0.05 * x + 0.03 * y + 2 * np.sin(x / 15)
-        z_layer1 = z_top - 100 - 5 * np.sin(y / 10)
-        z_layer2 = z_layer1 - 100 - 5 * np.cos(x / 10)
-        z_bot = z_layer2 - 100 - 5 * np.cos(x / 10)
-
-        for i in range(len(z_top)):
-            if x[i] <300 and y[i]<300:
-                z_layer2[i] = z_bot[i]
-            if x[i] >700 and y[i] >700:
-                z_layer2[i] = z_bot[i]
-
-        upper = np.column_stack((x, y, z_top))
-        layer_1 = np.column_stack((x, y, z_layer1))
-        layer_2 = np.column_stack((x, y, z_layer2))
-        lower = np.column_stack((x, y, z_bot))
-        return [upper, layer_1, layer_2, lower]
 
     # 实际数据
     def generate_layers_from_xyz(self):#z_list 中的数据是每层相交点的坐标
@@ -95,15 +70,6 @@ class Block:
         mesh = pv.PolyData(np.array(all_points), faces_flat)
         mesh.clean(inplace=True)
         return mesh
-
-
-    def main(self):
-        # 数据生成
-        xy = self.generate_irregular_xy()
-        # main_xy = xy[(xy[:,0]<500)|(xy[:,1]<500)]
-        # another_xy = xy[(xy[:,0]>500)&(xy[:,1]>500)]
-        # split_block(main_xy,another_xy)
-        self.visualization_block(xy)
 
 
     def execute(self):
@@ -187,5 +153,6 @@ class Block:
         # mesh_list[-2].save('lower_layer.obj')
         # mesh_list[-3].save('middle_layer.obj')
 
-    if __name__ == "__main__":
-        main()
+if __name__ == "__main__":
+    builder = Block()
+    builder.main()
