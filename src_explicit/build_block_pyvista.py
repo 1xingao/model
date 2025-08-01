@@ -3,7 +3,7 @@ import pyvista as pv
 from scipy.spatial import Delaunay
 
 # 测试数据
-def generate_irregular_xy(n_points=1000, x_range=(0, 1500), y_range=(0, 1500), seed=42):
+def generate_irregular_xy(n_points=4000, x_range=(0, 1500), y_range=(0, 1500), seed=42):
     np.random.seed(seed)
     x = np.random.uniform(*x_range, n_points)
     y = np.random.uniform(*y_range, n_points)
@@ -156,8 +156,8 @@ def visualization_block(xy):
 
     # 可视化
     plotter = pv.Plotter()
-    plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=1, show_edges=True, label='layer2-Lower')
-    plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=1, show_edges=True, label='layer1-layer2')
+    plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=1, show_edges=False, label='layer2-Lower')
+    plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=1, show_edges=False, label='layer1-layer2')
     plotter.add_mesh(mesh_list[0], color='lightgreen', opacity=1, show_edges=True, label='Upper-layer1')
 
     plotter.add_legend()
