@@ -141,6 +141,8 @@ def main():
 def visualization_block(xy):
     layer_list = generate_layers_from_xy(xy)
     # 构建两层块体
+    #show_single_tin(layer_list)
+    #show_single_tin_surface(layer_list)
     block_list = []
     cnt = 0
     for i in range(len(layer_list)-1):
@@ -153,7 +155,7 @@ def visualization_block(xy):
     for i in range(len(block_list)):
         mesh = create_pyvista_mesh_from_blocks(block_list[i])
         mesh_list.append(mesh)
-
+    show_full_model_colormap(mesh_list)
     # 可视化
     plotter = pv.Plotter()
     plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=1, show_edges=False, label='layer2-Lower')
@@ -216,6 +218,50 @@ def split_block(main_xy,another_xy):
     # mesh_list[-1].save('upper_layer.obj')
     # mesh_list[-2].save('lower_layer.obj')
     # mesh_list[-3].save('middle_layer.obj')
+
+def show_single_tin(layer_list):
+    plotter = pv.Plotter()
+    for i, layer in enumerate(layer_list):
+        # 根据高度着色
+        z = layer[:, 2]
+        cmap = 'viridis'  # 可选 colormap
+        surf = pv.PolyData(layer)
+        plotter.add_mesh(surf, scalars=z, cmap=cmap, show_edges=True, label=f'TIN_{i+1}')
+    plotter.add_legend()
+    plotter.add_axes()
+    plotter.show_grid()
+    plotter.show(title='单独展示每一个TIN（高度着色）')
+
+def show_single_tin_surface(layer_list):
+    plotter = pv.Plotter()
+    cmap_list = ['viridis', 'plasma', 'inferno', 'magma', 'cividis']
+    for i, layer in enumerate(layer_list):
+        tri = Delaunay(layer[:, :2])
+        faces = np.hstack((np.full((tri.simplices.shape[0], 1), 3), tri.simplices)).astype(np.int32)
+        surf = pv.PolyData(layer, faces)
+        z = layer[:, 2]
+        cmap = cmap_list[i % len(cmap_list)]
+        plotter.add_mesh(surf, scalars=z, cmap=cmap, show_edges=False, label=f'TIN_{i+1}')
+    plotter.add_legend()
+    plotter.add_axes()
+    plotter.show_grid()
+    plotter.show(title='单独展示每一个TIN顶面（三角剖分+高度着色）')
+
+def show_full_model_colormap(mesh_list):
+    plotter = pv.Plotter()
+    # 合并所有 mesh 的点，获取整体高度范围
+    all_z = np.concatenate([mesh.points[:, 2] for mesh in mesh_list])
+    z_min, z_max = all_z.min(), all_z.max()
+    cmap = 'viridis'  # 可选色带
+    for i, mesh in enumerate(mesh_list):
+        # 按整体高度范围着色
+        plotter.add_mesh(mesh, scalars=mesh.points[:, 2], cmap=cmap, clim=[z_min, z_max], show_edges=False, label=f'Block_{i+1}')
+    plotter.add_legend()
+    plotter.add_axes()
+    plotter.show_grid()
+    plotter.show(title='整体三维模型统一色带（按高度着色）')
+
+# 使用方法：show_full_model_colormap(mesh_list)
 
 if __name__ == "__main__":
     main()
