@@ -3,7 +3,7 @@ import pyvista as pv
 from scipy.spatial import Delaunay
 
 # 测试数据
-def generate_irregular_xy(n_points=1000, x_range=(0, 1000), y_range=(0, 1000), seed=42):
+def generate_irregular_xy(n_points=1000, x_range=(0, 1500), y_range=(0, 1500), seed=42):
     np.random.seed(seed)
     x = np.random.uniform(*x_range, n_points)
     y = np.random.uniform(*y_range, n_points)
@@ -11,16 +11,61 @@ def generate_irregular_xy(n_points=1000, x_range=(0, 1000), y_range=(0, 1000), s
 
 def generate_layers_from_xy(xy):
     x, y = xy[:, 0], xy[:, 1]
-    z_top = 100 - 0.05 * x + 0.03 * y + 2 * np.sin(x / 5)
-    z_layer1 = z_top - 100 - 5 * np.sin(y*5)
-    z_layer2 = z_layer1 - 100 - 5 * np.cos(x *5)
-    z_bot = z_layer2 - 100 - 5 * np.cos(x *5)
+    # z_top = 100 - 0.05 * x + 0.03 * y + 2 * np.sin(x / 5)
+    # z_layer1 = z_top - 100 - 5 * np.sin(y*5)
+    # z_layer2 = z_layer1 - 100 - 5 * np.cos(x *5)
+    # z_bot = z_layer2 - 100 - 5 * np.cos(x *5)
 
     # for i in range(len(z_top)):
     #     if x[i] <300 and y[i]<300:
     #         z_layer2[i] = z_bot[i]
     #     if x[i] >700 and y[i] >700:
     #         z_layer2[i] = z_bot[i]
+
+# 塌陷中心和控制参数
+    center_x, center_y = 750, 750
+    collapse_radius = 200  # 半径更小 -> 中心更陡
+    collapse_depth = 150    # 深度更大 -> 更凹陷
+
+    # 到中心的欧几里得距离
+    r = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+
+    # 更陡峭的高斯塌陷（越靠近中心越剧烈）
+    collapse = -collapse_depth * np.exp(-(r ** 2) / (2 * collapse_radius ** 2))
+
+    # 顶板：地形起伏 + 强烈塌陷
+    z_top = (
+        130
+        + 10 * np.sin(x / 80)
+        + 8 * np.cos(y / 70)
+        + 12 * np.sin(np.sqrt(x ** 2 + y ** 2) / 100)
+        + collapse  # 明显塌陷
+    )
+
+    # 中间层层与地表相对接近，但逐层弱化塌陷
+    z_layer1 = (
+        z_top
+        - 90
+        - 5 * np.sin(y / 30)
+        - 4 * np.cos(x / 40)
+        + collapse * 0.3  # 继承部分塌陷趋势
+    )
+
+    z_layer2 = (
+        z_layer1
+        - 90
+        - 6 * np.sin((x + y) / 25)
+        + 5 * np.cos((x - y) / 20)
+        + collapse * 0.1
+    )
+
+    z_bot = (
+        z_layer2
+        - 100
+        - 12 * np.sin(x / 15)
+        - 8 * np.cos(y / 12)
+    )
+
 
     upper = np.column_stack((x, y, z_top))
     layer_1 = np.column_stack((x, y, z_layer1))
@@ -70,9 +115,9 @@ def create_pyvista_mesh_from_blocks(blocks):
             # [3, ids[1], ids[5], ids[4]],
             # [3, ids[2], ids[0], ids[3]],
             # [3, ids[2], ids[3], ids[5]],
-            # [4, ids[0], ids[1], ids[4], ids[3]],  # side 1
-            # [4, ids[1], ids[2], ids[5], ids[4]],  # side 2
-            # [4, ids[2], ids[0], ids[3], ids[5]],  # side 3
+            [4, ids[0], ids[1], ids[4], ids[3]],  # side 1
+            [4, ids[1], ids[2], ids[5], ids[4]],  # side 2
+            [4, ids[2], ids[0], ids[3], ids[5]],  # side 3
         ]
         all_faces.extend(faces)
 
@@ -97,11 +142,12 @@ def visualization_block(xy):
     layer_list = generate_layers_from_xy(xy)
     # 构建两层块体
     block_list = []
+    cnt = 0
     for i in range(len(layer_list)-1):
         
-        blocks1 = build_prism_blocks(layer_list[i], layer_list[i+1])
+        blocks1 = build_prism_blocks(layer_list[i]+-np.array([0,0,cnt]), layer_list[i+1]-np.array([0,0,cnt]))
         block_list.append(blocks1)
-
+        cnt += 200
     mesh_list = []
     # 创建 PyVista 网格
     for i in range(len(block_list)):
@@ -112,7 +158,7 @@ def visualization_block(xy):
     plotter = pv.Plotter()
     plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=1, show_edges=True, label='layer2-Lower')
     plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=1, show_edges=True, label='layer1-layer2')
-    plotter.add_mesh(mesh_list[0], color='lightgreen', opacity=0.9, show_edges=True, label='Upper-layer1')
+    plotter.add_mesh(mesh_list[0], color='lightgreen', opacity=1, show_edges=True, label='Upper-layer1')
 
     plotter.add_legend()
     
