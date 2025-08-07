@@ -3,7 +3,7 @@ import pyvista as pv
 from scipy.spatial import Delaunay
 
 # 测试数据
-def generate_irregular_xy(n_points=4000, x_range=(0, 1500), y_range=(0, 1500), seed=42):
+def generate_irregular_xy(n_points=5000, x_range=(0, 2000), y_range=(0, 2000), seed=42):
     np.random.seed(seed)
     x = np.random.uniform(*x_range, n_points)
     y = np.random.uniform(*y_range, n_points)
@@ -23,9 +23,9 @@ def generate_layers_from_xy(xy):
     #         z_layer2[i] = z_bot[i]
 
 # 塌陷中心和控制参数
-    center_x, center_y = 750, 750
+    center_x, center_y = 1000, 1000
     collapse_radius = 200  # 半径更小 -> 中心更陡
-    collapse_depth = 150    # 深度更大 -> 更凹陷
+    collapse_depth = 200    # 深度更大 -> 更凹陷
 
     # 到中心的欧几里得距离
     r = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
@@ -41,11 +41,17 @@ def generate_layers_from_xy(xy):
         + 12 * np.sin(np.sqrt(x ** 2 + y ** 2) / 100)
         + collapse  # 明显塌陷
     )
+    z_top_none_collapse = (
+        130
+        + 10 * np.sin(x / 80)
+        + 8 * np.cos(y / 70)
+        + 12 * np.sin(np.sqrt(x ** 2 + y ** 2) / 100)
+    )
 
     # 中间层层与地表相对接近，但逐层弱化塌陷
     z_layer1 = (
         z_top
-        - 90
+        - 150
         - 5 * np.sin(y / 30)
         - 4 * np.cos(x / 40)
         + collapse * 0.3  # 继承部分塌陷趋势
@@ -53,7 +59,7 @@ def generate_layers_from_xy(xy):
 
     z_layer2 = (
         z_layer1
-        - 90
+        - 100
         - 6 * np.sin((x + y) / 25)
         + 5 * np.cos((x - y) / 20)
         + collapse * 0.1
@@ -61,7 +67,14 @@ def generate_layers_from_xy(xy):
 
     z_bot = (
         z_layer2
-        - 100
+        - 180
+        - 12 * np.sin(x / 15)
+        - 8 * np.cos(y / 12)
+    )
+
+    z_end = (
+        z_top_none_collapse
+        - 740
         - 12 * np.sin(x / 15)
         - 8 * np.cos(y / 12)
     )
@@ -71,7 +84,8 @@ def generate_layers_from_xy(xy):
     layer_1 = np.column_stack((x, y, z_layer1))
     layer_2 = np.column_stack((x, y, z_layer2))
     lower = np.column_stack((x, y, z_bot))
-    return [upper, layer_1, layer_2, lower]
+    end = np.column_stack((x, y, z_end))
+    return [upper, layer_1, layer_2, lower, end]
 
 
 def build_prism_blocks(upper, lower):
@@ -145,21 +159,23 @@ def visualization_block(xy):
     #show_single_tin_surface(layer_list)
     block_list = []
     cnt = 0
+    interval = 400
     for i in range(len(layer_list)-1):
         
-        blocks1 = build_prism_blocks(layer_list[i]+-np.array([0,0,cnt]), layer_list[i+1]-np.array([0,0,cnt]))
+        blocks1 = build_prism_blocks(layer_list[i]-np.array([0,0,cnt]), layer_list[i+1]-np.array([0,0,cnt]))
         block_list.append(blocks1)
-        cnt += 200
+        cnt += interval
     mesh_list = []
     # 创建 PyVista 网格
     for i in range(len(block_list)):
         mesh = create_pyvista_mesh_from_blocks(block_list[i])
         mesh_list.append(mesh)
-    show_full_model_colormap(mesh_list)
+    # show_full_model_colormap(mesh_list)
     # 可视化
     plotter = pv.Plotter()
-    plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=1, show_edges=False, label='layer2-Lower')
-    plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=1, show_edges=False, label='layer1-layer2')
+    plotter.add_mesh(mesh_list[3], color="#1B9997", opacity=1, show_edges=True, label='Lower-coal')
+    plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=1, show_edges=True, label='layer2-Lower')
+    plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=1, show_edges=True, label='layer1-layer2')
     plotter.add_mesh(mesh_list[0], color='lightgreen', opacity=1, show_edges=True, label='Upper-layer1')
 
     plotter.add_legend()
