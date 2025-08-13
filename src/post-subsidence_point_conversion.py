@@ -7,6 +7,7 @@ def subsidence_probability_integral(points_df, q, H, tan_beta, theta0, center_x,
     三维概率积分法计算任意层面的下沉量
     """
     B = H * tan_beta  # 主要影响半径
+    delta = H / np.tan(theta0)  # 传播角修正距离（cot(theta0)）
 
     dx = points_df['X'] - center_x
     dy = points_df['Y'] - center_y
@@ -15,13 +16,14 @@ def subsidence_probability_integral(points_df, q, H, tan_beta, theta0, center_x,
     dx_prime = dx * np.cos(alpha) + dy * np.sin(alpha)
     dy_prime = -dx * np.sin(alpha) + dy * np.cos(alpha)
 
+    # 加入 θ0 修正的积分限
     fx = 0.5 * (
-        erf((dx_prime + Lx / 2) / (np.sqrt(2) * B)) -
-        erf((dx_prime - Lx / 2) / (np.sqrt(2) * B))
+        erf((dx_prime + Lx / 2 + delta) / (np.sqrt(2) * B)) -
+        erf((dx_prime - Lx / 2 - delta) / (np.sqrt(2) * B))
     )
     fy = 0.5 * (
-        erf((dy_prime + Ly / 2) / (np.sqrt(2) * B)) -
-        erf((dy_prime - Ly / 2) / (np.sqrt(2) * B))
+        erf((dy_prime + Ly / 2 + delta) / (np.sqrt(2) * B)) -
+        erf((dy_prime - Ly / 2 - delta) / (np.sqrt(2) * B))
     )
 
     subsidence = q * H * fx * fy
