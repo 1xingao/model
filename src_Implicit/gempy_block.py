@@ -3,6 +3,27 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
 import math
+
+# --- PyVista/GemPy 2.2.10 兼容修复：确保 pyvista.plotting 暴露 parse_color ---
+try:
+    import pyvista
+    import pyvista.plotting as _pv_plotting
+    if not hasattr(_pv_plotting, 'parse_color'):
+        try:
+            # 新版本 PyVista 将 parse_color 移到了 utilities.colors 下
+            from pyvista.utilities import colors as _pv_colors
+            if hasattr(_pv_colors, 'parse_color'):
+                _pv_plotting.parse_color = _pv_colors.parse_color  # type: ignore[attr-defined]
+        except Exception:
+            # 兜底：使用 matplotlib 解析颜色到 RGB
+            import matplotlib.colors as _mc
+            def _fallback_parse_color(c):
+                return _mc.to_rgb(c)
+            _pv_plotting.parse_color = _fallback_parse_color  # type: ignore[attr-defined]
+except Exception:
+    # 若 PyVista 不可用，后续 GemPy 2D 仍可运行；3D 可能不可用
+    pass
+
 import gempy as gp
 import matplotlib.pyplot as plt
 
@@ -80,7 +101,7 @@ def profile_points_to_orientations(profile_xyz, global_profile_azimuth=None, sam
 # 论文中也是用这一类流程来创建模型并可视化（paper 方法节）。:contentReference[oaicite:6]{index=6}
 # -----------------------
 
-def run_gempy_model(interfaces_csv='interfaces.csv', orientations_csv='orientations.csv',
+def run_gempy_model(interfaces_csv='./data/interfaces.csv', orientations_csv='./data/orientations.csv',
                     model_name='Yantan_model', extent=None, resolution=[80,80,80]):
     """
     interfaces_csv: path to CSV with columns x,y,z,formation (表1)
@@ -126,7 +147,10 @@ def run_gempy_model(interfaces_csv='interfaces.csv', orientations_csv='orientati
     gp.set_interpolation_data(geo_model, compile_theano=True)
     gp.compute_model(geo_model)
 
-    p3d = gp.plot_3d(geo_model)   # 论文使用 PyVista 内置 viewer 来查看三维模型。:contentReference[oaicite:7]{index=7}
+    try:
+        p3d = gp.plot_3d(geo_model)
+    except Exception as e:
+        print('3D 可视化暂不可用，继续显示 2D。原因：', e)
     p2d = gp.plot_2d(geo_model, show=False)
     plt.show()
 
