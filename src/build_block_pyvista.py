@@ -75,32 +75,37 @@ class Block:
     def execute(self):
         self.visualization_block()
 
-    def visualization_block(self):
+    def visualization_block(self, screenshot_path=None, title=None, off_screen=False):
+        """可视化当前 Block 的层间块体。
+        screenshot_path: 如提供则保存截图
+        title: 窗口标题
+        off_screen: 在无界面环境使用离屏渲染
+        """
         layer_list = self.generate_layers_from_xyz()
-        # 构建两层块体
-        block_list = []
-        for i in range(len(layer_list)-1):
+        if len(layer_list) < 2:
+            raise ValueError("需要至少两层数据才能构建块体")
 
-            blocks1 = self.build_prism_blocks(layer_list[i], layer_list[i+1])
-            block_list.append(blocks1)
+        # 构建相邻层之间的三棱柱块集合
+        block_list = [self.build_prism_blocks(layer_list[i], layer_list[i+1])
+                      for i in range(len(layer_list)-1)]
 
-        mesh_list = []
-        # 创建 PyVista 网格
-        for i in range(len(block_list)):
-            mesh = self.create_pyvista_mesh_from_blocks(block_list[i])
-            mesh_list.append(mesh)
+        mesh_list = [self.create_pyvista_mesh_from_blocks(blks) for blks in block_list]
 
-        # 可视化
-        plotter = pv.Plotter()
-        plotter.add_mesh(mesh_list[2], color='lightcoral', opacity=0.9, show_edges=True, label='layer2-Lower')
-        plotter.add_mesh(mesh_list[1], color='lightskyblue', opacity=0.9, show_edges=True, label='layer1-layer2')
-        plotter.add_mesh(mesh_list[0], color='lightgreen', opacity=0.9, show_edges=True, label='Upper-layer1')
+        # 按从上到下的颜色列表（可扩展）
+        default_colors = ['lightgreen', 'lightskyblue', 'lightcoral', 'khaki', 'plum']
+        plotter = pv.Plotter(off_screen=off_screen)
+        for idx, mesh in enumerate(mesh_list[::-1]):  # 反向绘制保证上层不被完全遮挡
+            color = default_colors[idx % len(default_colors)]
+            plotter.add_mesh(mesh, color=color, opacity=1, show_edges=True, label=f'layer{len(mesh_list)-idx}')
 
         plotter.add_legend()
-        
         plotter.add_axes()
         plotter.show_grid()
-        plotter.show(title=f'{len(mesh_list)+1}层地层体块模型(PyVista)')
+        window_title = title or f'{len(mesh_list)+1}层地层体块模型(PyVista)'
+        if screenshot_path:
+            plotter.show(title=window_title, screenshot=screenshot_path, auto_close=True)
+        else:
+            plotter.show(title=window_title)
         
         # mesh_list[-1].save('upper_layer.obj')
         # mesh_list[-2].save('lower_layer.obj')

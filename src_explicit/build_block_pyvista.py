@@ -24,7 +24,7 @@ def generate_layers_from_xy(xy):
 
 # 塌陷中心和控制参数
     center_x, center_y = 1000, 1000
-    collapse_radius = 200  # 半径更小 -> 中心更陡
+    collapse_radius = 300  # 半径更小 -> 中心更陡
     collapse_depth = 200    # 深度更大 -> 更凹陷
 
     # 到中心的欧几里得距离
@@ -159,7 +159,7 @@ def visualization_block(xy):
     #show_single_tin_surface(layer_list)
     block_list = []
     cnt = 0
-    interval = 400
+    interval = 200
     for i in range(len(layer_list)-1):
         
         blocks1 = build_prism_blocks(layer_list[i]-np.array([0,0,cnt]), layer_list[i+1]-np.array([0,0,cnt]))
