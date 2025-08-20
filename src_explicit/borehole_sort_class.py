@@ -283,6 +283,11 @@ def execute_main():
         "BH09": [22, 21],
         "BH10": [24, 24],
     }
+    path = ""
+    data = pd.read_excel(path)
+
+    boreholes = data["地层名称"].to_dict()
+    boreholes_thickness = data["厚度"].to_dict()
     processor = boreholeProcessor(boreholes, boreholes_thickness)
     processor.process()
 
