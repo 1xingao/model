@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <vtkMultiBlockDataSet>
+    <DataSet index="0" name="Block-00" file="output_model_random/output_model_random_0.vtp"/>
+    <DataSet index="1" name="Block-01" file="output_model_random/output_model_random_1.vtp"/>
+    <DataSet index="2" name="Block-02" file="output_model_random/output_model_random_2.vtp"/>
+    <DataSet index="3" name="Block-03" file="output_model_random/output_model_random_3.vtp"/>
+    <DataSet index="4" name="Block-04" file="output_model_random/output_model_random_4.vtp"/>
+    <DataSet index="5" name="Block-05" file="output_model_random/output_model_random_5.vtp"/>
+    <DataSet index="6" name="Block-06" file="output_model_random/output_model_random_6.vtp"/>
+    <DataSet index="7" name="Block-07" file="output_model_random/output_model_random_7.vtp"/>
+    <DataSet index="8" name="Block-08" file="output_model_random/output_model_random_8.vtp"/>
+    <DataSet index="9" name="Block-09" file="output_model_random/output_model_random_9.vtp"/>
+  </vtkMultiBlockDataSet>
+</VTKFile>

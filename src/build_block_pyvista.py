@@ -2,10 +2,17 @@ import numpy as np
 import pyvista as pv
 from scipy.spatial import Delaunay
 
+import matplotlib.font_manager as fm
+#设置字体文件路径
+font_path = 'SimHei.ttf'
+#注册字体文件
+prop = fm.FontProperties(fname=font_path)
 class Block:
-    def __init__(self, xy=None, z_list=None):
+    def __init__(self, xy=None, z_list=None, layer_names=None):
         self.xy = xy
         self.z_list = z_list
+        self.layer_names = layer_names  # 添加地层名称
+        self.mesh_list = []
 
     # 实际数据
     def generate_layers_from_xyz(self):#z_list 中的数据是每层相交点的坐标
@@ -90,26 +97,28 @@ class Block:
                       for i in range(len(layer_list)-1)]
 
         mesh_list = [self.create_pyvista_mesh_from_blocks(blks) for blks in block_list]
+        self.mesh_list = mesh_list  # 保存以便后续导出使用
+        # 扩展颜色列表
+        extended_colors = [
+            'lightgreen', 'lightskyblue', 'lightcoral', 'khaki', 'plum',
+            'gold', 'darkorange', 'cyan', 'magenta', 'lime', 'pink'
+        ]
 
-        # 按从上到下的颜色列表（可扩展）
-        default_colors = ['lightgreen', 'lightskyblue', 'lightcoral', 'khaki', 'plum']
         plotter = pv.Plotter(off_screen=off_screen)
         for idx, mesh in enumerate(mesh_list[::-1]):  # 反向绘制保证上层不被完全遮挡
-            color = default_colors[idx % len(default_colors)]
-            plotter.add_mesh(mesh, color=color, opacity=1, show_edges=True, label=f'layer{len(mesh_list)-idx}')
+            color = extended_colors[idx % len(extended_colors)]
+            layer_label = self.layer_names[len(mesh_list) - idx - 1] if self.layer_names else f'layer{len(mesh_list)-idx}'
+            plotter.add_mesh(mesh, color=color, opacity=1, show_edges=True, label=layer_label)
 
         plotter.add_legend()
         plotter.add_axes()
-        plotter.show_grid()
+        plotter.show_grid(color='black')  # 设置网格字体颜色为黑色
         window_title = title or f'{len(mesh_list)+1}层地层体块模型(PyVista)'
         if screenshot_path:
             plotter.show(title=window_title, screenshot=screenshot_path, auto_close=True)
         else:
             plotter.show(title=window_title)
         
-        # mesh_list[-1].save('upper_layer.obj')
-        # mesh_list[-2].save('lower_layer.obj')
-        # mesh_list[-3].save('middle_layer.obj')
 
     def split_block(self,main_xy,another_xy):
         layer_list = self.generate_layers_from_xy(main_xy)
@@ -157,6 +166,31 @@ class Block:
         # mesh_list[-1].save('upper_layer.obj')
         # mesh_list[-2].save('lower_layer.obj')
         # mesh_list[-3].save('middle_layer.obj')
+
+    def export_model(self, output_path="model.vtm"):
+        """
+        导出模型为 .vtm 文件，支持不同地层显示不同颜色。
+        参数:
+            output_path: 导出的文件路径
+        """
+
+        # 为每个地层分配颜色
+        extended_colors = [
+            'lightgreen', 'lightskyblue', 'lightcoral', 'khaki', 'plum',
+            'gold', 'darkorange', 'cyan', 'magenta', 'lime', 'pink'
+        ]
+
+        combined_mesh = pv.MultiBlock()
+        for idx, mesh in enumerate(self.mesh_list[::-1]):
+            color = extended_colors[idx % len(extended_colors)]
+            layer_label = self.layer_names[len(self.mesh_list) - idx - 1] if self.layer_names else f'layer{len(self.mesh_list)-idx}'
+            mesh["layer"] = layer_label.encode('ascii', 'ignore').decode('ascii')  # 确保地层名称为 ASCII 编码
+            mesh["color"] = color  # 添加颜色属性
+            combined_mesh.append(mesh)
+
+        # 导出为 .vtm 文件
+        combined_mesh.save(output_path)
+        print(f"模型已导出到 {output_path}")
 
 if __name__ == "__main__":
     builder = Block()
