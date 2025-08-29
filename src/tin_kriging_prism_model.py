@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 from pykrige.ok import OrdinaryKriging
 from build_block_pyvista import Block
-
+import matplotlib.pyplot as plt
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 设置中文字体
 DATA_PATH = './data/地层坐标.xlsx'  # 输入数据: layer,x,y,z 
 GRID_NX = 80
 GRID_NY = 80
@@ -53,7 +54,7 @@ def build_unified_grid(layers: dict):
     yi = np.linspace(y_min, y_max, GRID_NY)
     gx, gy = np.meshgrid(xi, yi)
     grid_points = np.c_[gx.ravel(), gy.ravel()]
-    return grid_points
+    return xi, yi, grid_points
 
 def build_random_grid(layers: dict, num_points: int):
     """
@@ -122,12 +123,43 @@ def build_block_model(grid_points: np.ndarray, z_list: list, layer_names: list):
     block.execute()
     block.export_model("./data/output_model_random.vtm")
 
+def plot_kriging_results(z_list, xi, yi, layer_names):
+    """
+    显示所有克里金插值结果图在一张大图中。
+    参数:
+        z_list: 每个地层的插值结果。
+        xi: 网格的 x 坐标。
+        yi: 网格的 y 坐标。
+        layer_names: 地层名称列表。
+    """
+    num_layers = len(z_list)
+    cols = 3  # 每行显示的图像数量
+    rows = (num_layers + cols - 1) // cols  # 计算行数
+
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 5 * rows))
+    axes = axes.flatten()
+
+    for i, z_vals in enumerate(z_list):
+        ax = axes[i]
+        zi = z_vals.reshape(len(yi), len(xi))
+        c = ax.contourf(xi, yi, zi, cmap='viridis')
+        fig.colorbar(c, ax=ax)
+        ax.set_title(f"{layer_names[i]} 插值结果")
+        ax.set_xlabel("X 坐标")
+        ax.set_ylabel("Y 坐标")
+
+    # 隐藏多余的子图
+    for j in range(num_layers, len(axes)):
+        axes[j].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 def main():
     print(f'读取数据: {DATA_PATH}')
     layer_points = load_layer_points(DATA_PATH)
     print(f'检测到层: {list(layer_points.keys())}')
-    #grid_points = build_unified_grid(layer_points)
-    grid_points = build_random_grid(layer_points, num_points=GRID_NX * GRID_NY)
+    xi, yi, grid_points = build_unified_grid(layer_points)
     order, z_list = interpolate_all_layers(layer_points, grid_points)
 
     # 排除最顶层地表层
@@ -135,6 +167,9 @@ def main():
     print('层插值顺序(自下而上):', layer_names)
 
     build_block_model(grid_points, z_list, layer_names)
+
+    # 显示所有插值结果图
+    plot_kriging_results(z_list, xi, yi, order)
 
 if __name__ == '__main__':
     main()
