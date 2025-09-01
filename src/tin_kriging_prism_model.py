@@ -3,8 +3,10 @@ import pandas as pd
 from pykrige.ok import OrdinaryKriging
 from build_block_pyvista import Block
 import matplotlib.pyplot as plt
+from scipy.interpolate import griddata
+
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 设置中文字体
-DATA_PATH = './data/地层坐标.xlsx'  # 输入数据: layer,x,y,z 
+DATA_PATH = './data/rea_data/地层坐标.xlsx'  # 输入数据: layer,x,y,z 
 GRID_NX = 80
 GRID_NY = 80
 DEFAULT_VARIOGRAM = 'spherical'            # 默认变差函数模型
@@ -13,13 +15,16 @@ VERBOSE_KRIGE = False
 layer_name__list = ["sandstone_3","coal5-3","sandstone_2","coal5-2","sandstone_1",
                     "coal4-2","Sandstone and mudstone mixed layer","coal3-1",
                     "gravel sandstone layer","loose layer"]
+
+
+
 def load_layer_points(path: str):
     """
     读取地层坐标数据，文件格式为地层名称、x、y、z。
     参数:
         path: 文件路径
     返回:
-        字典，其中键是地层名称，值是包含 x, y, z 的 DataFrame。
+        字典，key是地层名称，value是包含 x, y, z 的 DataFrame。
     """
     # 读取 Excel 文件
     df = pd.read_excel(path)
@@ -39,6 +44,8 @@ def load_layer_points(path: str):
     groups = {layer: group[['x', 'y', 'z']].reset_index(drop=True) for layer, group in df.groupby('layer')}
     return groups
 
+
+
 def build_unified_grid(layers: dict):
     xs = []
     ys = []
@@ -55,6 +62,8 @@ def build_unified_grid(layers: dict):
     gx, gy = np.meshgrid(xi, yi)
     grid_points = np.c_[gx.ravel(), gy.ravel()]
     return xi, yi, grid_points
+
+
 
 def build_random_grid(layers: dict, num_points: int):
     """
@@ -83,17 +92,32 @@ def build_random_grid(layers: dict, num_points: int):
 
     return random_points
 
-def krige_layer(df_layer: pd.DataFrame, grid_points: np.ndarray, variogram_model: str):
+
+
+def krige_layer(df_layer: pd.DataFrame, grid_points: np.ndarray, variogram_model: str,opt_params: list=[]):
     if len(df_layer) < 3:
         raise ValueError('点数不足，无法克里金插值 (>=3)')
-    ok = OrdinaryKriging(
-        df_layer['x'], df_layer['y'], df_layer['z']*10,
-        variogram_model=variogram_model,
-        verbose=VERBOSE_KRIGE,
+    
+    if len(opt_params) != 0:
+        ok = OrdinaryKriging(
+            df_layer['x'], df_layer['y'], df_layer['z']*10,
+            variogram_model=variogram_model,
+            variogram_parameters={'nugget': opt_params[0], 'range': opt_params[1], 'sill': opt_params[2]},
+            verbose=VERBOSE_KRIGE,
         enable_plotting=False
-    )
+        )
+    else:
+        ok = OrdinaryKriging(
+            df_layer['x'], df_layer['y'], df_layer['z']*10,
+            variogram_model=variogram_model,
+            verbose=VERBOSE_KRIGE,
+            enable_plotting=False
+            )
     z_pred, _ = ok.execute('points', grid_points[:,0], grid_points[:,1])
+    
     return np.asarray(z_pred)
+
+
 
 def interpolate_all_layers(layer_points: dict, grid_points: np.ndarray):
     # 层按平均 Z 升序排列 (自下而上建模)
@@ -104,6 +128,8 @@ def interpolate_all_layers(layer_points: dict, grid_points: np.ndarray):
         z_vals = krige_layer(layer_points[lname], grid_points, model)
         z_list.append(z_vals)
     return order, z_list
+
+
 
 def build_block_model(grid_points: np.ndarray, z_list: list, layer_names: list):
     """
@@ -155,6 +181,52 @@ def plot_kriging_results(z_list, xi, yi, layer_names):
     plt.tight_layout()
     plt.show()
 
+def validate_interpolation(layer_points, grid_points, z_list, layer_names):
+    """
+    验证插值结果与原始钻孔数据的误差。
+    参数:
+        layer_points: 原始钻孔数据，字典形式 {layer_name: DataFrame(x, y, z)}。
+        grid_points: 插值网格点坐标。
+        z_list: 插值结果，每层的 z 值列表。
+        layer_names: 地层名称列表。
+    """
+    errors = []
+
+    for i, layer_name in enumerate(layer_names):
+        if layer_name not in layer_points:
+            continue
+
+        # 原始钻孔数据
+        df = layer_points[layer_name]
+        original_points = df[['x', 'y']].values
+        original_z = df['z'].values
+
+        # 插值结果
+        interpolated_z = griddata(grid_points, z_list[i], original_points, method='linear')/10
+
+        # 计算误差
+        error = interpolated_z - original_z
+        errors.append((layer_name, error))
+
+        # 可视化对比
+        plt.figure(figsize=(10, 6))
+        plt.scatter(original_z, interpolated_z, alpha=0.7, label='插值 vs 原始')
+        plt.plot([original_z.min(), original_z.max()], [original_z.min(), original_z.max()], 'r--', label='理想线')
+        plt.xlabel('原始 Z 值')
+        plt.ylabel('插值 Z 值')
+        plt.title(f'{layer_name} 插值验证')
+        plt.legend()
+        plt.grid()
+        plt.show()
+
+    # 输出误差统计
+    for layer_name, error in errors:
+        print(f'层 {layer_name} 的误差统计:')
+        print(f'  平均误差: {error.mean():.4f}')
+        print(f'  均方误差: {(error**2).mean():.4f}')
+        print(f'  最大误差: {error.max():.4f}')
+        print(f'  最小误差: {error.min():.4f}')
+
 def main():
     print(f'读取数据: {DATA_PATH}')
     layer_points = load_layer_points(DATA_PATH)
@@ -168,8 +240,8 @@ def main():
 
     build_block_model(grid_points, z_list, layer_names)
 
-    # 显示所有插值结果图
-    plot_kriging_results(z_list, xi, yi, order)
+    # 验证插值结果
+    validate_interpolation(layer_points, grid_points, z_list, layer_names)
 
 if __name__ == '__main__':
     main()

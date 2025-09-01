@@ -2,11 +2,11 @@ import pandas as pd
 
 def process_thickness_to_coordinates():
     # 读取地层统计数据
-    layer_data_path = './data/地层统计_标准分段_合并结果.xlsx'
+    layer_data_path = './data/real_data/地层统计_标准分段_合并结果.xlsx'
     layer_data = pd.read_excel(layer_data_path)
     # print(layer_data)
     # 读取钻孔位置数据
-    borehole_data_path = './data/钻孔位置统计.xlsx'
+    borehole_data_path = './data/real_data/钻孔位置统计.xlsx'
     borehole_data = pd.read_excel(borehole_data_path)
     # print(borehole_data)
     # 合并数据，计算地层底板坐标

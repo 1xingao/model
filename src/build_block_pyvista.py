@@ -84,7 +84,7 @@ class Block:
 
     def visualization_block(self, screenshot_path=None, title=None, off_screen=False):
         """可视化当前 Block 的层间块体。
-        screenshot_path: 如提供则保存截图
+        screenshot_path: 保存截图
         title: 窗口标题
         off_screen: 在无界面环境使用离屏渲染
         """

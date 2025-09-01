@@ -117,6 +117,6 @@ class PSO_Krige_Optimizer(Base_Krige_Optimizer):
 
 if __name__ == "__main__":
     target_layer = "黄土"
-    data_path = "./data/增强后的钻孔数据.xlsx"
+    data_path = "./data/test_data/增强后的钻孔数据.xlsx"
     optimizer = PSO_Krige_Optimizer(iters=500, particles=30, w=0.7, c1=1.5, c2=1.5)
     optimizer.run(data_path, target_layer)

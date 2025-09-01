@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.tri import Triangulation    
 from matplotlib.patches import Patch
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 设置中文字体
-TEST_CSV_PATH = os.path.join("data", "test_layers_points.csv")
+TEST_CSV_PATH = os.path.join("data/test_data", "test_layers_points.csv")
 
 def generate_test_layers_csv(num_points: int = 1000, path: str = TEST_CSV_PATH, random_state: int = 42):
     """

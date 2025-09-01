@@ -26,9 +26,9 @@ import pandas as pd
 
 
 
-INPUT_PATH  = "./data/地层统计.xlsx"                  # 输入 Excel 文件
+INPUT_PATH  = "./data/real_data/地层统计.xlsx"                  # 输入 Excel 文件
 SHEET_NAME  = "Sheet1"                         # 工作表名
-OUTPUT_PATH = "./data/地层统计_标准分段_合并结果.xlsx"   # 输出 Excel 文件
+OUTPUT_PATH = "./data/real_data/地层统计_标准分段_合并结果.xlsx"   # 输出 Excel 文件
 # 拼接模式: 'horizontal' 恢复原来按钻孔横向 4 列一组; 'vertical' 纵向堆叠
 MERGE_MODE  = 'vertical'
 
