@@ -121,7 +121,7 @@ def build_block_model(grid_points: np.ndarray, z_list: list, layer_names: list):
 
     # 执行模型构建
     block.execute()
-    block.export_model("./data/output_model_random.vtm")
+    block.export_model("./data/output_model.vtm")
 
 def plot_kriging_results(z_list, xi, yi, layer_names):
     """
