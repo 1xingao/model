@@ -93,8 +93,16 @@ class Block:
             raise ValueError("需要至少两层数据才能构建块体")
 
         # 构建相邻层之间的三棱柱块集合
-        block_list = [self.build_prism_blocks(layer_list[i], layer_list[i+1])
-                      for i in range(len(layer_list)-1)]
+        # block_list = [self.build_prism_blocks(layer_list[i], layer_list[i+1])
+        #               for i in range(len(layer_list)-1)]
+        block_list = []
+        cnt = 0
+        interval = 0
+        for i in range(len(layer_list)-1):
+        
+            blocks1 = self.build_prism_blocks(layer_list[i]+np.array([0,0,cnt]), layer_list[i+1]+np.array([0,0,cnt]))
+            block_list.append(blocks1)
+            cnt += interval
 
         mesh_list = [self.create_pyvista_mesh_from_blocks(blks) for blks in block_list]
         self.mesh_list = mesh_list  # 保存以便后续导出使用
@@ -109,10 +117,12 @@ class Block:
             color = extended_colors[idx % len(extended_colors)]
             layer_label = self.layer_names[len(mesh_list) - idx - 1] if self.layer_names else f'layer{len(mesh_list)-idx}'
             plotter.add_mesh(mesh, color=color, opacity=1, show_edges=True, label=layer_label)
-
+        
+        # plotter.set_scale(zscale=10)
         plotter.add_legend()
         plotter.add_axes()
-        plotter.show_grid(color='black')  # 设置网格字体颜色为黑色
+        plotter.show_grid(color='black') 
+
         window_title = title or f'{len(mesh_list)+1}层地层体块模型(PyVista)'
         if screenshot_path:
             plotter.show(title=window_title, screenshot=screenshot_path, auto_close=True)

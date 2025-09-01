@@ -48,7 +48,7 @@ def process_thickness_to_coordinates():
     combined_df.sort_values(by=['地层名称'], inplace=True)
 
     # 写出地层坐标数据
-    output_path = './data/地层坐标.xlsx'
+    output_path = './data/real_data/地层坐标.xlsx'
     combined_df.to_excel(output_path, index=False)
 
 process_thickness_to_coordinates()

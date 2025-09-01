@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 设置中文字体
-DATA_PATH = './data/rea_data/地层坐标.xlsx'  # 输入数据: layer,x,y,z 
+DATA_PATH = './data/real_data/地层坐标.xlsx'  # 输入数据: layer,x,y,z 
+LOCATION_PATH = "./data/real_data/钻孔位置统计.xlsx" 
 GRID_NX = 80
 GRID_NY = 80
 DEFAULT_VARIOGRAM = 'spherical'            # 默认变差函数模型
@@ -15,6 +16,7 @@ VERBOSE_KRIGE = False
 layer_name__list = ["sandstone_3","coal5-3","sandstone_2","coal5-2","sandstone_1",
                     "coal4-2","Sandstone and mudstone mixed layer","coal3-1",
                     "gravel sandstone layer","loose layer"]
+Z_SCALE = 10
 
 
 
@@ -44,7 +46,25 @@ def load_layer_points(path: str):
     groups = {layer: group[['x', 'y', 'z']].reset_index(drop=True) for layer, group in df.groupby('layer')}
     return groups
 
+def load_borehole_locations(path: str):
+    """
+    读取钻孔位置和名称。
+    参数:
+        path: 文件路径
+    返回:
+        DataFrame，包含 x, y 坐标和钻孔名称。
+    """
+    df = pd.read_excel(path)
 
+    # 检查必要列是否存在
+    required_columns = {'钻孔名称', 'x', 'y'}
+    if not required_columns.issubset(df.columns):
+        raise ValueError(f"文件缺少必要列: {required_columns}")
+
+    # 删除缺失值
+    df = df.dropna(subset=['钻孔名称', 'x', 'y'])
+
+    return df
 
 def build_unified_grid(layers: dict):
     xs = []
@@ -108,7 +128,7 @@ def krige_layer(df_layer: pd.DataFrame, grid_points: np.ndarray, variogram_model
         )
     else:
         ok = OrdinaryKriging(
-            df_layer['x'], df_layer['y'], df_layer['z']*10,
+            df_layer['x'], df_layer['y'], df_layer['z'],
             variogram_model=variogram_model,
             verbose=VERBOSE_KRIGE,
             enable_plotting=False
@@ -125,7 +145,7 @@ def interpolate_all_layers(layer_points: dict, grid_points: np.ndarray):
     z_list = []
     for lname in order:
         model = LAYER_VARIOGRAM.get(lname, DEFAULT_VARIOGRAM)
-        z_vals = krige_layer(layer_points[lname], grid_points, model)
+        z_vals = krige_layer(layer_points[lname], grid_points, model)*Z_SCALE
         z_list.append(z_vals)
     return order, z_list
 
@@ -149,14 +169,18 @@ def build_block_model(grid_points: np.ndarray, z_list: list, layer_names: list):
     block.execute()
     block.export_model("./data/output_model.vtm")
 
-def plot_kriging_results(z_list, xi, yi, layer_names):
+
+
+def plot_kriging_results(z_list, xi, yi, layer_names, layer_points, borehole_locations):
     """
-    显示所有克里金插值结果图在一张大图中。
+    显示所有克里金插值结果图在一张大图中，并标注钻孔位置和名称。
     参数:
         z_list: 每个地层的插值结果。
         xi: 网格的 x 坐标。
         yi: 网格的 y 坐标。
         layer_names: 地层名称列表。
+        layer_points: 原始钻孔数据，字典形式 {layer_name: DataFrame(x, y, z)}。
+        borehole_locations: DataFrame，包含钻孔位置和名称。
     """
     num_layers = len(z_list)
     cols = 3  # 每行显示的图像数量
@@ -174,12 +198,20 @@ def plot_kriging_results(z_list, xi, yi, layer_names):
         ax.set_xlabel("X 坐标")
         ax.set_ylabel("Y 坐标")
 
+        # 添加钻孔位置和名称
+        ax.scatter(borehole_locations['x'], borehole_locations['y'], color='red', label='钻孔位置')
+        for _, row in borehole_locations.iterrows():
+            ax.text(row['x'], row['y'], row['钻孔名称'], fontsize=8, color='black')
+
+        ax.legend()
+
     # 隐藏多余的子图
     for j in range(num_layers, len(axes)):
         axes[j].axis('off')
 
     plt.tight_layout()
     plt.show()
+
 
 def validate_interpolation(layer_points, grid_points, z_list, layer_names):
     """
@@ -240,8 +272,11 @@ def main():
 
     build_block_model(grid_points, z_list, layer_names)
 
-    # 验证插值结果
-    validate_interpolation(layer_points, grid_points, z_list, layer_names)
+    # 读取钻孔位置数据
+    borehole_locations = load_borehole_locations(LOCATION_PATH)
+
+    # 显示所有插值结果图，并标注钻孔位置和名称
+    plot_kriging_results(z_list, xi, yi, order, layer_points, borehole_locations)
 
 if __name__ == '__main__':
     main()
