@@ -1,17 +1,28 @@
-# 克里金插值参数优化算法比较和可视化（精简版）
-# 使用模块化设计，主要功能已拆分到独立文件中
-
+# 克里金插值参数优化算法比较和可视化
 # 常量定义
 DEFAULT_DATA_PATH = './data/real_data/地层坐标.xlsx'
 DEFAULT_TARGET_LAYER = '松散层'
+DEFAULT_GRID_RESOLUTION = 100
+FIGURE_SIZE = (20, 15)
 COMPARISON_ALGORITHMS = ['GA', 'PSO', 'ACO', 'DE', 'Bayesian']
 GENERATIONS = 400
 TRAIN_RATIO = 0.8
 RANDOM_SEED = 0
 OBJECTION_FUNCTION = 'rmse'
-VERBOSE = True
+VERBOSE=True
+VARIOGRAM_MODEL = 'spherical'
 
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+from pykrige.ok import OrdinaryKriging
+from scipy.spatial.distance import pdist, squareform
 import time
+import json
+
+# 过滤优化过程中的警告
+warnings.filterwarnings('ignore', category=Warning, module='sklearn')
+warnings.filterwarnings('ignore', message='.*convergence.*', category=Warning)
 
 # 导入优化器
 from genetic_algorithm_optimizer import GAKrigeOptimizer
@@ -20,19 +31,13 @@ from ant_colony_optimizer import ACOKrigeOptimizer
 from differential_evolution_optimizer import DEKrigeOptimizer
 from bayesian_optimizer import BayesianKrigeOptimizer
 
-# 导入新的模块化组件
-from visualization import KrigeVisualization
-from comparison_analysis import KrigeComparison
-from utils import OptimizationUtils, ConvergenceAnalyzer
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
 
 
 class KrigeOptimizationComparison:
     """
-    克里金插值参数优化算法比较类（精简版）
-    
-    主要功能：
-    1. 运行多种优化算法
-    2. 协调各模块进行分析和可视化
+    克里金插值参数优化算法比较类
     """
     
     def __init__(self, data_path=DEFAULT_DATA_PATH, target_layer=DEFAULT_TARGET_LAYER):
@@ -45,276 +50,376 @@ class KrigeOptimizationComparison:
         """
         self.data_path = data_path
         self.target_layer = target_layer
+        self.results = {}
         
-        # 初始化算法字典
-        self.algorithms = {
-            'GA': GAKrigeOptimizer(data_path, target_layer),
-            'PSO': PSOKrigeOptimizer(data_path, target_layer),
-            'ACO': ACOKrigeOptimizer(data_path, target_layer),
-            'DE': DEKrigeOptimizer(data_path, target_layer),
-            'Bayesian': BayesianKrigeOptimizer(data_path, target_layer)
-        }
-        
-        # 初始化工具组件
-        self.visualizer = KrigeVisualization()
-        self.comparator = KrigeComparison()
-        self.utils = OptimizationUtils()
-        self.convergence_analyzer = ConvergenceAnalyzer()
-        
-        # 抑制警告
-        self.utils.suppress_warnings()
-    
-    def run_algorithm_comparison(self, algorithms=None, max_iterations=GENERATIONS, 
-                               save_results=True, results_filename=None):
+    def run_algorithm_comparison(self, algorithms=COMPARISON_ALGORITHMS, 
+                                train_ratio=TRAIN_RATIO, random_seed=RANDOM_SEED, 
+                                objective=OBJECTION_FUNCTION, verbose=VERBOSE):
         """
         运行算法比较
         
         参数:
-            algorithms: 要比较的算法列表，默认全部算法
-            max_iterations: 最大迭代次数
-            save_results: 是否保存结果
-            results_filename: 结果文件名
+            algorithms: 要比较的算法列表
+            train_ratio: 训练集比例
+            random_seed: 随机种子
+            objective: 目标函数类型
+            verbose: 是否打印详细信息
             
         返回:
-            results: 算法结果字典
+            results: 比较结果字典
         """
-        if algorithms is None:
-            algorithms = COMPARISON_ALGORITHMS
+        # 初始化优化器
+        optimizers = {
+            'GA': GAKrigeOptimizer(generations=GENERATIONS, population_size=30),
+            'PSO': PSOKrigeOptimizer(iterations=GENERATIONS, n_particles=20),
+            'ACO': ACOKrigeOptimizer(iterations=GENERATIONS, n_ants=50),
+            'DE': DEKrigeOptimizer(generations=GENERATIONS, population_size=30),
+            'Bayesian': BayesianKrigeOptimizer(iterations=50, init_samples=10)
+        }
         
-        results = {}
-        
-        print(f"\n{'='*80}")
-        print("克里金插值参数优化算法比较")
-        print(f"数据路径: {self.data_path}")
-        print(f"目标地层: {self.target_layer}")
-        print(f"比较算法: {', '.join(algorithms)}")
-        print(f"最大迭代次数: {max_iterations}")
-        print(f"{'='*80}")
+        self.results = {}
         
         for alg_name in algorithms:
-            if alg_name not in self.algorithms:
-                print(f"警告: 算法 {alg_name} 不存在，跳过")
+            if alg_name not in optimizers:
+                print(f"警告: 未知算法 {alg_name}, 跳过")
                 continue
+                
+            print(f"\n{'='*50}")
+            print(f"运行 {alg_name} 算法...")
+            print(f"{'='*50}")
             
-            optimizer = self.algorithms[alg_name]
+            optimizer = optimizers[alg_name]
             
-            # 打印算法开始信息
-            self.utils.print_optimization_header(alg_name, max_iterations)
+            # 加载和分割数据
+            train_data, test_data = optimizer.load_and_split_data(
+                self.data_path, self.target_layer, train_ratio, random_seed
+            )
+            
+            # 定义参数边界
+            x_train, y_train, z_train = train_data
+            bounds = optimizer.define_parameter_bounds(x_train, y_train, z_train)
             
             # 运行优化
             start_time = time.time()
-            best_params, best_score, convergence_history = optimizer.optimize(max_iterations=max_iterations)
-            execution_time = time.time() - start_time
+            best_score, best_params = optimizer.optimize(
+                train_data, test_data, bounds, objective, verbose
+            )
+            end_time = time.time()
             
-            # 保存结果
-            results[alg_name] = {
-                'best_params': best_params,
+            # 存储结果
+            self.results[alg_name] = {
                 'best_score': best_score,
-                'execution_time': execution_time,
-                'convergence_history': convergence_history,
-                'train_data': (optimizer.x_train, optimizer.y_train, optimizer.z_train),
-                'test_data': (optimizer.x_test, optimizer.y_test, optimizer.z_test)
+                'best_params': best_params,
+                'runtime': end_time - start_time,
+                'train_data': train_data,
+                'test_data': test_data,
+                'bounds': bounds
             }
             
-            # 打印算法结束信息
-            self.utils.print_optimization_footer(alg_name, execution_time, best_score, best_params)
-            
-            # 分析收敛性
-            convergence_analysis = self.convergence_analyzer.analyze_convergence(convergence_history)
-            if convergence_analysis['converged']:
-                print(f"算法在第 {convergence_analysis['convergence_iteration']} 代收敛")
-            else:
-                print(f"算法在 {max_iterations} 代内未完全收敛")
+            print(f"{alg_name} 完成，用时: {end_time - start_time:.2f}秒")
+            print(f"最优参数: {best_params}")
         
-        # 保存结果
-        if save_results:
-            self.utils.save_results(results, results_filename)
-        
-        # 打印总结
-        self._print_comparison_summary(results)
-        
-        return results
+        return self.results
     
-    def visualize_results(self, results, save_plots=False, plots_dir='./plots/'):
+    def plot_semivariogram_comparison(self, save_path=None):
         """
-        可视化结果
+        绘制半变异函数比较图
         
         参数:
-            results: 算法结果字典
-            save_plots: 是否保存图片
-            plots_dir: 图片保存目录
+            save_path: 图片保存路径
         """
-        if not results:
-            print("没有结果可用于可视化")
+        if not self.results:
+            print("请先运行算法比较")
             return
         
-        print(f"\n{'='*60}")
-        print("开始可视化分析")
-        print(f"{'='*60}")
-        
-        # 1. 可视化收敛过程
-        convergence_save_path = f"{plots_dir}convergence_comparison.png" if save_plots else None
-        self.visualizer.plot_convergence_comparison(results, convergence_save_path)
-        
-        # 2. 可视化参数分布
-        params_save_path = f"{plots_dir}parameters_comparison.png" if save_plots else None
-        self.visualizer.plot_parameters_comparison(results, params_save_path)
-        
-        # 3. 可视化半变异函数
-        semivariogram_save_path = f"{plots_dir}semivariogram_comparison.png" if save_plots else None
         # 使用第一个算法的数据
-        first_result = list(results.values())[0]
-        x_train, y_train, z_train = first_result['train_data']
-        self.visualizer.plot_semivariogram_comparison(x_train, y_train, z_train, results, semivariogram_save_path)
+        first_alg = list(self.results.keys())[0]
+        x_train, y_train, z_train = self.results[first_alg]['train_data']
         
-        # 4. 可视化插值对比
-        interpolation_save_path = f"{plots_dir}interpolation_comparison.png" if save_plots else None
-        self.visualizer.plot_interpolation_comparison(results, interpolation_save_path)
+        # 计算实验半方差
+        coords = np.vstack((x_train, y_train)).T
+        dists = squareform(pdist(coords))
+        semivariances = 0.5 * (z_train[:, None] - z_train[None, :]) ** 2
+        triu_indices = np.triu_indices_from(dists, k=1)
+        h = dists[triu_indices]
+        gamma = semivariances[triu_indices]
         
-        # 5. 可视化结果总结
-        summary_save_path = f"{plots_dir}results_summary.png" if save_plots else None
-        self.visualizer.plot_results_summary(results, summary_save_path)
+        # 分组计算
+        nlags = 15
+        bins = np.linspace(h.min(), h.max(), nlags + 1)
+        bin_indices = np.digitize(h, bins)
+        bin_centers = []
+        gamma_means = []
         
-        print("可视化完成")
+        for i in range(1, len(bins)):
+            mask = bin_indices == i
+            if np.any(mask):
+                bin_centers.append(h[mask].mean())
+                gamma_means.append(gamma[mask].mean())
+        
+        bin_centers = np.array(bin_centers)
+        gamma_means = np.array(gamma_means)
+        
+        # 绘图
+        plt.figure(figsize=(15, 10))
+        
+        # 实验半方差
+        plt.scatter(bin_centers, gamma_means, color='black', s=50, 
+                   label='实验半方差', zorder=3)
+        
+        # 理论变差函数
+        h_fit = np.linspace(0, h.max(), 200)
+        colors = ['red', 'blue', 'green', 'orange', 'purple']
+        
+        for i, (alg_name, result) in enumerate(self.results.items()):
+            params = result['best_params']
+            nugget = params['nugget']
+            range_val = params['range']
+            sill = params['sill']
+            
+            # 球状模型
+            gamma_fit = self._spherical_model(h_fit, nugget, range_val, sill)
+            
+            plt.plot(h_fit, gamma_fit, color=colors[i % len(colors)], 
+                    linewidth=2, label=f'{alg_name} 优化')
+        
+        plt.xlabel('距离 h')
+        plt.ylabel('半方差 γ(h)')
+        plt.title('不同优化算法的半变异函数比较')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.show()
     
-    def analyze_vs_default(self, results, algorithm_name=None, save_plots=False, plots_dir='./plots/'):
+    def plot_interpolation_comparison(self, grid_resolution=DEFAULT_GRID_RESOLUTION, 
+                                    save_path=None):
         """
-        分析优化结果与默认参数的对比
+        绘制插值结果比较图
         
         参数:
-            results: 算法结果字典
-            algorithm_name: 指定算法名称
-            save_plots: 是否保存图片
-            plots_dir: 图片保存目录
+            grid_resolution: 网格分辨率
+            save_path: 图片保存路径
         """
-        if not results:
-            print("没有结果可用于分析")
+        if not self.results:
+            print("请先运行算法比较")
             return
         
-        print(f"\n{'='*60}")
-        print("开始默认参数 vs 优化参数对比分析")
-        print(f"{'='*60}")
+        # 使用第一个算法的数据
+        first_alg = list(self.results.keys())[0]
+        x_train, y_train, z_train = self.results[first_alg]['train_data']
+        x_test, y_test, z_test = self.results[first_alg]['test_data']
         
-        if algorithm_name:
-            # 分析单个算法
-            comparison_save_path = f"{plots_dir}default_vs_{algorithm_name.lower()}.png" if save_plots else None
-            comparison_results = self.comparator.compare_default_vs_optimized(results, algorithm_name, comparison_save_path)
-        else:
-            # 分析所有算法
-            comparison_save_path = f"{plots_dir}default_vs_all_algorithms.png" if save_plots else None
-            comparison_results = self.comparator.compare_all_algorithms_vs_default(results, comparison_save_path)
+        # 创建插值网格
+        x_all = np.concatenate([x_train, x_test])
+        y_all = np.concatenate([y_train, y_test])
         
-        print("对比分析完成")
-        return comparison_results
+        grid_x = np.linspace(x_all.min(), x_all.max(), grid_resolution)
+        grid_y = np.linspace(y_all.min(), y_all.max(), grid_resolution)
+        grid_xx, grid_yy = np.meshgrid(grid_x, grid_y)
+        
+        # 计算每个算法的插值结果
+        n_algs = len(self.results)
+        fig, axes = plt.subplots(2, 3, figsize=FIGURE_SIZE)
+        axes = axes.flatten()
+        
+        # 默认克里金插值
+        ok_default = OrdinaryKriging(
+            x_train, y_train, z_train,
+            variogram_model=VARIOGRAM_MODEL,
+            verbose=False,
+            enable_plotting=False
+        )
+        z_default, ss_default = ok_default.execute('grid', grid_x, grid_y)
+        
+        # 绘制默认插值
+        cs = axes[0].contourf(grid_xx, grid_yy, z_default, levels=20, cmap='viridis')
+        axes[0].scatter(x_train, y_train, c='white', s=30, edgecolor='black')
+        axes[0].scatter(x_test, y_test, c='red', s=30, marker='x')
+        axes[0].set_title('默认参数插值')
+        axes[0].set_xlabel('X')
+        axes[0].set_ylabel('Y')
+        plt.colorbar(cs, ax=axes[0])
+        
+        # 绘制优化后的插值
+        for i, (alg_name, result) in enumerate(self.results.items()):
+            if i >= 5:  # 最多显示5个算法
+                break
+                
+            params = result['best_params']
+            variogram_params = [params['nugget'], params['range'], params['sill']]
+            
+            ok_opt = OrdinaryKriging(
+                x_train, y_train, z_train,
+                variogram_model=VARIOGRAM_MODEL,
+                variogram_parameters=variogram_params,
+                verbose=False,
+                enable_plotting=False
+            )
+            z_opt, ss_opt = ok_opt.execute('grid', grid_x, grid_y)
+            
+            cs = axes[i + 1].contourf(grid_xx, grid_yy, z_opt, levels=20, cmap='viridis')
+            axes[i + 1].scatter(x_train, y_train, c='white', s=30, edgecolor='black')
+            axes[i + 1].scatter(x_test, y_test, c='red', s=30, marker='x')
+            axes[i + 1].set_title(f'{alg_name} 优化插值')
+            axes[i + 1].set_xlabel('X')
+            axes[i + 1].set_ylabel('Y')
+            plt.colorbar(cs, ax=axes[i + 1])
+        
+        # 隐藏多余的子图
+        for j in range(len(self.results) + 1, len(axes)):
+            axes[j].axis('off')
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.show()
     
-    def run_full_analysis(self, algorithms=None, max_iterations=GENERATIONS, 
-                         save_results=True, save_plots=False, 
-                         results_filename=None, plots_dir='./plots/'):
+    def plot_convergence_comparison(self, save_path=None):
         """
-        运行完整分析（一键运行所有功能）
+        绘制收敛性比较图（需要算法返回收敛历史）
         
         参数:
-            algorithms: 要比较的算法列表
-            max_iterations: 最大迭代次数
-            save_results: 是否保存结果
-            save_plots: 是否保存图片
-            results_filename: 结果文件名
-            plots_dir: 图片保存目录
+            save_path: 图片保存路径
+        """
+        # 这里需要修改优化器以返回收敛历史
+        # 暂时显示最终结果比较
+        self.plot_results_summary(save_path)
+    
+    def plot_results_summary(self, save_path=None):
+        """
+        绘制结果总结图
+        
+        参数:
+            save_path: 图片保存路径
+        """
+        if not self.results:
+            print("请先运行算法比较")
+            return
+        
+        alg_names = list(self.results.keys())
+        scores = [self.results[alg]['best_score'] for alg in alg_names]
+        runtimes = [self.results[alg]['runtime'] for alg in alg_names]
+        
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+        
+        # 适应度比较
+        bars1 = ax1.bar(alg_names, scores, color=['red', 'blue', 'green', 'orange', 'purple'])
+        ax1.set_ylabel('RMSE')
+        ax1.set_title('算法性能比较')
+        ax1.tick_params(axis='x', rotation=45)
+        
+        # 在柱状图上显示数值
+        for bar, score in zip(bars1, scores):
+            height = bar.get_height()
+            ax1.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{score:.4f}', ha='center', va='bottom')
+        
+        # 运行时间比较
+        bars2 = ax2.bar(alg_names, runtimes, color=['red', 'blue', 'green', 'orange', 'purple'])
+        ax2.set_ylabel('运行时间 (秒)')
+        ax2.set_title('算法效率比较')
+        ax2.tick_params(axis='x', rotation=45)
+        
+        # 在柱状图上显示数值
+        for bar, runtime in zip(bars2, runtimes):
+            height = bar.get_height()
+            ax2.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{runtime:.2f}s', ha='center', va='bottom')
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.show()
+    
+    def export_results(self, file_path):
+        """
+        导出结果到JSON文件
+        
+        参数:
+            file_path: 导出文件路径
+        """
+        if not self.results:
+            print("请先运行算法比较")
+            return
+        
+        # 转换numpy数组为列表，以便JSON序列化
+        export_data = {}
+        for alg_name, result in self.results.items():
+            export_data[alg_name] = {
+                'best_score': float(result['best_score']),
+                'best_params': {
+                    k: float(v) for k, v in result['best_params'].items()
+                },
+                'runtime': float(result['runtime'])
+            }
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"结果已导出到: {file_path}")
+    
+    def _spherical_model(self, h, nugget, range_val, sill):
+        """
+        球状模型变差函数
+        
+        参数:
+            h: 距离
+            nugget: 块金效应
+            range_val: 变程
+            sill: 基台值
             
         返回:
-            results: 完整分析结果
+            gamma: 半方差值
         """
-        print(f"\n{'='*80}")
-        print("开始克里金插值参数优化完整分析")
-        print(f"{'='*80}")
-        
-        # 1. 运行算法比较
-        results = self.run_algorithm_comparison(algorithms, max_iterations, save_results, results_filename)
-        
-        # 2. 可视化结果
-        self.visualize_results(results, save_plots, plots_dir)
-        
-        # 3. 默认参数对比分析
-        comparison_results = self.analyze_vs_default(results, save_plots=save_plots, plots_dir=plots_dir)
-        
-        # 4. 生成最终报告
-        self._generate_final_report(results, comparison_results)
-        
-        print(f"\n{'='*80}")
-        print("完整分析完成")
-        print(f"{'='*80}")
-        
-        return {
-            'optimization_results': results,
-            'comparison_results': comparison_results
-        }
-    
-    def _print_comparison_summary(self, results):
-        """
-        打印比较总结
-        """
-        if not results:
-            return
-        
-        print(f"\n{'='*80}")
-        print("算法比较总结")
-        print(f"{'='*80}")
-        
-        # 创建总结表
-        summary_df = self.utils.create_results_summary(results)
-        print(summary_df.to_string(index=False))
-        
-        # 找出最佳算法
-        best_algorithm = summary_df.iloc[0]['算法']
-        best_score = summary_df.iloc[0]['Best Score']
-        print(f"\n最佳算法: {best_algorithm} (分数: {best_score:.6f})")
-        
-    def _generate_final_report(self, results, comparison_results):
-        """
-        生成最终报告
-        """
-        print(f"\n{'='*80}")
-        print("最终分析报告")
-        print(f"{'='*80}")
-        
-        if results:
-            # 算法性能排名
-            summary_df = self.utils.create_results_summary(results)
-            print(f"\n算法性能排名:")
-            for i, row in summary_df.iterrows():
-                print(f"{row['排名']}. {row['算法']} - Score: {row['Best Score']:.6f}, "
-                      f"执行时间: {self.utils.format_execution_time(row['执行时间(秒)'])}")
-        
-        if comparison_results:
-            # 参数优化效果
-            print(f"\n参数优化效果:")
-            for alg_name, comp_result in comparison_results.items():
-                if isinstance(comp_result, dict) and 'improvements' in comp_result:
-                    improvements = comp_result['improvements']
-                    print(f"{alg_name}: RMSE改进 {improvements['rmse_improvement']:+.2f}%, "
-                          f"MAE改进 {improvements['mae_improvement']:+.2f}%, "
-                          f"R²改进 {improvements['r2_improvement']:+.2f}%")
+        h = np.array(h)
+        return np.piecewise(
+            h,
+            [h <= range_val, h > range_val],
+            [
+                lambda x: nugget + (sill - nugget) * (1.5 * x / range_val - 0.5 * (x / range_val) ** 3),
+                lambda x: sill
+            ]
+        )
 
 
 def main():
     """
-    主函数 - 演示如何使用优化比较器
+    主函数：运行算法比较示例
     """
     # 创建比较器
     comparator = KrigeOptimizationComparison()
     
-    # 运行完整分析
-    results = comparator.run_full_analysis(
-        algorithms=['GA', 'PSO', 'Bayesian'],  # 可以选择特定算法
-        max_iterations=100,  # 设置较小的迭代次数用于快速测试
-        save_results=True,
-        save_plots=True,
-        plots_dir='./plots/'
+    # 运行算法比较
+    print("开始克里金插值参数优化算法比较...")
+    results = comparator.run_algorithm_comparison(
+        algorithms=COMPARISON_ALGORITHMS,  # 可以调整要比较的算法
+        train_ratio=0.7,
+        random_seed=42,
+        objective='rmse',
+        verbose=True
     )
     
-    return results
+    # 绘制比较图
+    print("\n生成比较图...")
+    comparator.plot_semivariogram_comparison()
+    comparator.plot_interpolation_comparison()
+    comparator.plot_results_summary()
+    
+    # 导出结果
+    comparator.export_results('optimization_results.json')
+    
+    print("\n算法比较完成！")
 
 
-if __name__ == "__main__":
-    # 运行主函数
+if __name__ == '__main__':
     main()
+
+# 使用说明：
+# 1. 确保所有优化器文件和数据文件在正确位置
+# 2. 根据需要调整算法参数和比较设置
+# 3. 运行此文件即可进行算法比较和可视化
+# 4. 结果会以图表形式显示，并可导出为JSON文件
