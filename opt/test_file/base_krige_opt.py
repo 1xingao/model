@@ -10,13 +10,13 @@ class Base_Krige_Optimizer:
         self.ranges = None
         self.sills = None
 
-    def generate_data(self, data_path, target_layer="黄土", seed=0, train_ratio=0.7):
+    def generate_data(self, data_path, target_layer="松散层", seed=0, train_ratio=0.7):
         np.random.seed(seed)
         df = pd.read_excel(data_path)
-        layer_df = df[df["地层"] == target_layer]
-        x = layer_df["X"].values.astype(np.float64)
-        y = layer_df["Y"].values.astype(np.float64)
-        z = layer_df["厚度"].values.astype(np.float64)
+        layer_df = df[df["地层名称"] == target_layer]
+        x = layer_df["x"].values.astype(np.float64)
+        y = layer_df["y"].values.astype(np.float64)
+        z = layer_df["z"].values.astype(np.float64)
         n_points = len(x)
         n_train = int(n_points * train_ratio)
         train_idx = np.random.choice(n_points, n_train, replace=False)

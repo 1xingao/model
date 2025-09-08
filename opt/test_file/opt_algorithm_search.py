@@ -251,8 +251,8 @@ def visualize_kriging_results(pso_optimizer, aco_optimizer, ga_optimizer, target
 
 def main():
 
-    data_path = "./data/随机分布钻孔数据.xlsx"
-    target_layer = "粉土"
+    data_path = "./data/real_data/地层坐标.xlsx"
+    target_layer = "松散层"
 
     iters = 500
     pso_optimizer = PSO_Krige_Optimizer(iters)

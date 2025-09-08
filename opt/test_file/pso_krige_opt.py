@@ -103,7 +103,7 @@ class PSO_Krige_Optimizer(Base_Krige_Optimizer):
         plt.suptitle(f"{target_layer} Kriging Interpolation & Variance Comparison", fontsize=18)
         plt.show()
 
-    def run(self, data_path, target_layer="黄土"):
+    def run(self, data_path, target_layer="松散层"):
         (x_train, y_train, z_train), (x_test, y_test, z_test) = self.generate_data(data_path, target_layer=target_layer)
         nuggets_range, ranges_range, sills_range = self.define_parameter_space(x_train, y_train, z_train)
         best_score, best_params = self.particle_swarm_optimize(
@@ -116,7 +116,7 @@ class PSO_Krige_Optimizer(Base_Krige_Optimizer):
         self.interpolate_and_compare(x_train, y_train, z_train, best_params, target_layer=target_layer)
 
 if __name__ == "__main__":
-    target_layer = "黄土"
-    data_path = "./data/test_data/增强后的钻孔数据.xlsx"
+    target_layer = "松散层"
+    data_path = "./data/real_data/地层坐标.xlsx"
     optimizer = PSO_Krige_Optimizer(iters=500, particles=30, w=0.7, c1=1.5, c2=1.5)
     optimizer.run(data_path, target_layer)
