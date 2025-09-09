@@ -215,6 +215,9 @@ class ACOKrigeOptimizer(BaseKrigeOptimizer):
         
         if verbose:
             print(f"蚁群优化完成，最优适应度: {self.best_score:.6f}")
+            
+            # 比较默认参数和优化参数的误差
+            self.compare_all_parameters(train_data, test_data)
         
         return self.best_score, self.get_best_parameters()
 
