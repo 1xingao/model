@@ -1,6 +1,10 @@
 import numpy as np
 import pyvista as pv
 from scipy.spatial import Delaunay
+try:
+    import trimesh
+except ImportError:
+    trimesh = None
 
 import matplotlib.font_manager as fm
 #设置字体文件路径
@@ -201,6 +205,83 @@ class Block:
         # 导出为 .vtm 文件
         combined_mesh.save(output_path)
         print(f"模型已导出到 {output_path}")
+
+    def export_to_gltf_trimesh(self, output_path="model.gltf"):
+        """
+        使用Trimesh导出为GLTF格式，支持材质和颜色
+        参数:
+            output_path: 导出的文件路径
+        """
+        if trimesh is None:
+            print("需要安装trimesh库：pip install trimesh[easy]")
+            return
+            
+        if not self.mesh_list:
+            raise ValueError("没有可导出的网格数据，请先执行 visualization_block 方法")
+            
+        try:
+            # 扩展颜色列表 (RGBA格式)
+            extended_colors = [
+                [144, 238, 144, 255],  # lightgreen
+                [135, 206, 250, 255],  # lightskyblue  
+                [240, 128, 128, 255],  # lightcoral
+                [240, 230, 140, 255],  # khaki
+                [221, 160, 221, 255],  # plum
+                [255, 215, 0, 255],    # gold
+                [255, 140, 0, 255],    # darkorange
+                [0, 255, 255, 255],    # cyan
+                [255, 0, 255, 255],    # magenta
+                [0, 255, 0, 255],      # lime
+                [255, 192, 203, 255],  # pink
+            ]
+            
+            scene = trimesh.Scene()
+            
+            for idx, mesh in enumerate(self.mesh_list):
+                # 获取顶点和面数据
+                vertices = mesh.points
+                faces_data = mesh.faces
+                
+                # 处理面数据：PyVista的面数据格式为 [n, v1, v2, v3, ...] 
+                # 需要转换为trimesh的三角形面格式
+                faces = []
+                i = 0
+                while i < len(faces_data):
+                    n_vertices = faces_data[i]
+                    if n_vertices == 3:  # 三角形面
+                        faces.append(faces_data[i+1:i+4])
+                    elif n_vertices == 4:  # 四边形面，分解为两个三角形
+                        quad = faces_data[i+1:i+5]
+                        faces.append([quad[0], quad[1], quad[2]])
+                        faces.append([quad[0], quad[2], quad[3]])
+                    i += n_vertices + 1
+                
+                if not faces:
+                    print(f"警告：第{idx}层网格没有有效的面数据，跳过")
+                    continue
+                
+                faces = np.array(faces)
+                
+                # 创建trimesh对象
+                tri_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+                
+                # 设置颜色
+                color = extended_colors[idx % len(extended_colors)]
+                tri_mesh.visual.face_colors = color
+                
+                # 添加到场景
+                layer_name = self.layer_names[idx] if self.layer_names and idx < len(self.layer_names) else f'layer_{idx}'
+                # 确保层名称为ASCII编码
+                layer_name_ascii = layer_name.encode('ascii', 'ignore').decode('ascii')
+                scene.add_geometry(tri_mesh, node_name=layer_name_ascii)
+            
+            # 导出为GLTF
+            scene.export(output_path)
+            print(f"GLTF模型已导出到 {output_path}")
+            
+        except Exception as e:
+            print(f"导出GLTF时出错: {e}")
+            print("请确保已安装完整的trimesh库：pip install trimesh[easy]")
 
 if __name__ == "__main__":
     builder = Block()
