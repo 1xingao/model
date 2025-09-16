@@ -1,0 +1,181 @@
+{
+  "asset": {
+    "version": "1.0"
+  },
+  "geometricError": 500,
+  "root": {
+    "boundingVolume": {
+      "region": [
+        2.0244073993882226,
+        0.6805038753525892,
+        2.024756465238622,
+        0.6808529412029879,
+        -100,
+        100
+      ]
+    },
+    "geometricError": 100,
+    "children": [
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            -50,
+            50
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "sandstone_3_0.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            -40,
+            60
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "coal5-3_1.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            -30,
+            70
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "sandstone_2_2.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            -20,
+            80
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "coal5-2_3.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            -10,
+            90
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "sandstone_1_4.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            0,
+            100
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "coal4-2_5.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            10,
+            110
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "Sandstone and mudstone mixed layer_6.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            20,
+            120
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "coal3-1_7.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            30,
+            130
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "gravel sandstone layer_8.gltf"
+        }
+      },
+      {
+        "boundingVolume": {
+          "region": [
+            2.0244946658508227,
+            0.6805911418151888,
+            2.0246691987760217,
+            0.6807656747403883,
+            40,
+            140
+          ]
+        },
+        "geometricError": 50,
+        "content": {
+          "uri": "loose layer_9.gltf"
+        }
+      }
+    ]
+  }
+}

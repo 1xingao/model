@@ -168,7 +168,8 @@ def build_block_model(grid_points: np.ndarray, z_list: list, layer_names: list):
     # 执行模型构建
     block.execute()
     # block.export_model("./data/output_model.vtm")
-    block.export_to_gltf_trimesh("./data/model_gltf/output_model.gltf")
+    # block.export_to_gltf_trimesh("./data/model_gltf/output_model.gltf")
+    block.export_to_3dtiles("./data/model_3dtiles/output_model")
 
 
 

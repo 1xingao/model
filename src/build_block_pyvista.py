@@ -6,6 +6,12 @@ try:
 except ImportError:
     trimesh = None
 
+try:
+
+    import py3dtiles
+except ImportError:
+    py3dtiles = None
+
 import matplotlib.font_manager as fm
 #设置字体文件路径
 font_path = 'SimHei.ttf'
@@ -283,6 +289,175 @@ class Block:
             print(f"导出GLTF时出错: {e}")
             print("请确保已安装完整的trimesh库：pip install trimesh[easy]")
 
+    def export_to_3dtiles(self, output_dir="3dtiles_model", center_coords=None):
+        """
+        导出模型为3DTiles格式，适用于Cesium等Web 3D应用
+        参数:
+            output_dir: 导出的目录路径
+            center_coords: 模型中心坐标 [longitude, latitude, height]，默认为 [0, 0, 0]
+        """
+        if py3dtiles is None:
+            print("需要安装py3dtiles库：pip install py3dtiles")
+            return
+            
+        if not self.mesh_list:
+            raise ValueError("没有可导出的网格数据，请先执行 visualization_block 方法")
+            
+        try:
+            import os
+            import json
+            
+            # 创建输出目录
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # 设置默认中心坐标
+            if center_coords is None:
+                center_coords = [116.0, 39.0, 0]  # 北京坐标作为默认值
+                
+            lon, lat, height = center_coords
+            
+            # 创建tileset.json文件
+            tileset = {
+                "asset": {"version": "1.0"},
+                "geometricError": 500,
+                "root": {
+                    "boundingVolume": {
+                        "region": [
+                            np.radians(lon - 0.01),  # west
+                            np.radians(lat - 0.01),  # south  
+                            np.radians(lon + 0.01),  # east
+                            np.radians(lat + 0.01),  # north
+                            height - 100,            # minimum height
+                            height + 100             # maximum height
+                        ]
+                    },
+                    "geometricError": 100,
+                    "children": []
+                }
+            }
+            
+            # 扩展颜色列表 (RGB格式，0-1范围)
+            extended_colors = [
+                [0.565, 0.933, 0.565],  # lightgreen
+                [0.529, 0.808, 0.980],  # lightskyblue
+                [0.941, 0.502, 0.502],  # lightcoral
+                [0.941, 0.902, 0.549],  # khaki
+                [0.867, 0.627, 0.867],  # plum
+                [1.0, 0.843, 0.0],      # gold
+                [1.0, 0.549, 0.0],      # darkorange
+                [0.0, 1.0, 1.0],        # cyan
+                [1.0, 0.0, 1.0],        # magenta
+                [0.0, 1.0, 0.0],        # lime
+                [1.0, 0.753, 0.796],    # pink
+            ]
+            
+            # 为每个地层创建一个tile
+            for idx, mesh in enumerate(self.mesh_list):
+                layer_name = self.layer_names[idx] if self.layer_names and idx < len(self.layer_names) else f'layer_{idx}'
+                layer_name_ascii = layer_name.encode('ascii', 'ignore').decode('ascii')
+                
+                # 先导出为GLTF格式
+                gltf_filename = f"{layer_name_ascii}_{idx}.gltf"
+                gltf_path = os.path.join(output_dir, gltf_filename)
+                
+                # 使用trimesh导出单个地层为GLTF
+                if trimesh is not None:
+                    vertices = mesh.points
+                    faces_data = mesh.faces
+                    
+                    # 处理面数据
+                    faces = []
+                    i = 0
+                    while i < len(faces_data):
+                        n_vertices = faces_data[i]
+                        if n_vertices == 3:
+                            faces.append(faces_data[i+1:i+4])
+                        elif n_vertices == 4:
+                            quad = faces_data[i+1:i+5]
+                            faces.append([quad[0], quad[1], quad[2]])
+                            faces.append([quad[0], quad[2], quad[3]])
+                        i += n_vertices + 1
+                    
+                    if faces:
+                        faces = np.array(faces)
+                        tri_mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+                        
+                        # 设置颜色
+                        color_rgb = extended_colors[idx % len(extended_colors)]
+                        color_rgba = color_rgb + [1.0]  # 添加alpha通道
+                        tri_mesh.visual.face_colors = [int(c * 255) for c in color_rgba]
+                        
+                        # 导出为GLTF
+                        tri_mesh.export(gltf_path)
+                        
+                        # 添加到tileset
+                        child_tile = {
+                            "boundingVolume": {
+                                "region": [
+                                    np.radians(lon - 0.005),
+                                    np.radians(lat - 0.005),
+                                    np.radians(lon + 0.005),
+                                    np.radians(lat + 0.005),
+                                    height + idx * 10 - 50,
+                                    height + idx * 10 + 50
+                                ]
+                            },
+                            "geometricError": 50,
+                            "content": {
+                                "uri": gltf_filename
+                            }
+                        }
+                        tileset["root"]["children"].append(child_tile)
+                        
+                        print(f"已导出地层 {layer_name} 到 {gltf_filename}")
+                else:
+                    print(f"警告：trimesh未安装，无法导出地层 {layer_name}")
+            
+            # 保存tileset.json
+            tileset_path = os.path.join(output_dir, "tileset.json")
+            with open(tileset_path, 'w', encoding='utf-8') as f:
+                json.dump(tileset, f, indent=2, ensure_ascii=False)
+            
+            print(f"3DTiles模型已导出到 {output_dir}")
+            print(f"主文件: {tileset_path}")
+            print(f"模型中心坐标: 经度 {lon}, 纬度 {lat}, 高度 {height}")
+            print("可以在Cesium等支持3DTiles的应用中加载此模型")
+            
+        except Exception as e:
+            print(f"导出3DTiles时出错: {e}")
+            print("请确保已安装py3dtiles库：pip install py3dtiles")
+
 if __name__ == "__main__":
-    builder = Block()
-    builder.main()
+    # 创建示例数据
+    # xy = np.array([[0, 0], [1, 0], [0.5, 1], [1.5, 1]])
+    # z_list = [np.array([0, 0, 0, 0]), 
+    #           np.array([1, 1, 1, 1]), 
+    #           np.array([2, 2, 2, 2])]
+    # layer_names = ['表土层', '砂土层', '粘土层']
+    
+    # builder = Block(xy=xy, z_list=z_list, layer_names=layer_names)
+    
+    # # 生成可视化
+    # builder.visualization_block(title='地质体三维模型')
+    
+    # # 导出VTM格式
+    # builder.export_model("output_model.vtm")
+    
+    # # 导出GLTF格式（使用Trimesh）
+    # builder.export_to_gltf_trimesh("output_model.gltf")
+    
+    # # 导出3DTiles格式（用于Cesium等Web 3D应用）
+    # # 可以指定地理坐标，例如：[116.0, 39.0, 0] 表示北京
+    # builder.export_to_3dtiles("3dtiles_output", center_coords=[116.0, 39.0, 0])
+    
+    # 请替换为你的实际数据
+    print("请使用实际的 xy 坐标和 z_list 数据来创建 Block 实例")
+    print("支持的导出格式:")
+    print("1. VTM格式: builder.export_model('model.vtm')")
+    print("2. GLTF格式: builder.export_to_gltf_trimesh('model.gltf')")  
+    print("3. 3DTiles格式: builder.export_to_3dtiles('3dtiles_output', center_coords=[lon, lat, height])")
+    print()
+    print("示例用法:")
+    print("builder = Block(xy=your_xy_data, z_list=your_z_data, layer_names=your_layer_names)")
+    print("builder.visualization_block()")
+    print("builder.export_to_3dtiles('geological_model_3dtiles')")
