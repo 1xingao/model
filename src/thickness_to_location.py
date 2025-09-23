@@ -6,7 +6,7 @@ def process_thickness_to_coordinates():
     layer_data = pd.read_excel(layer_data_path)
     # print(layer_data)
     # 读取钻孔位置数据
-    borehole_data_path = './data/real_data/钻孔位置统计.xlsx'
+    borehole_data_path = './data/real_data/钻孔位置统计_局部坐标系.xlsx'
     borehole_data = pd.read_excel(borehole_data_path)
     # print(borehole_data)
     # 合并数据，计算地层底板坐标
@@ -36,7 +36,7 @@ def process_thickness_to_coordinates():
             z_current = z_bottom
 
     # 添加地表层数据到地层坐标
-    surface_data = borehole_data[['钻孔名称', 'x', 'y', 'z']]
+    surface_data = borehole_data[['钻孔名称', 'x', 'y', 'z']].copy()
     surface_data.rename(columns={'钻孔名称': '地层名称'}, inplace=True)
     surface_data['地层名称'] = '地表层'
 

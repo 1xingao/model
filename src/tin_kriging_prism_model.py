@@ -7,7 +7,7 @@ from scipy.interpolate import griddata
 
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 设置中文字体
 DATA_PATH = './data/real_data/地层坐标.xlsx'  # 输入数据: layer,x,y,z 
-LOCATION_PATH = "./data/real_data/钻孔位置统计.xlsx" 
+LOCATION_PATH = "./data/real_data/钻孔位置统计_局部坐标系.xlsx" 
 GRID_NX = 80
 GRID_NY = 80
 DEFAULT_VARIOGRAM = 'spherical'            # 默认变差函数模型
@@ -120,7 +120,7 @@ def krige_layer(df_layer: pd.DataFrame, grid_points: np.ndarray, variogram_model
     
     if len(opt_params) != 0:
         ok = OrdinaryKriging(
-            df_layer['x'], df_layer['y'], df_layer['z']*10,
+            df_layer['x'], df_layer['y'], df_layer['z'],
             variogram_model=variogram_model,
             variogram_parameters={'nugget': opt_params[0], 'range': opt_params[1], 'sill': opt_params[2]},
             verbose=VERBOSE_KRIGE,
@@ -168,8 +168,8 @@ def build_block_model(grid_points: np.ndarray, z_list: list, layer_names: list):
     # 执行模型构建
     block.execute()
     # block.export_model("./data/output_model.vtm")
-    # block.export_to_gltf_trimesh("./data/model_gltf/output_model.gltf")
-    block.export_to_3dtiles("./data/model_3dtiles/output_model")
+    block.export_to_gltf_trimesh("./data/model_gltf/output_model.gltf")
+    # block.export_to_3dtiles("./data/model_3dtiles/output_model")
 
 
 
@@ -192,6 +192,7 @@ def plot_kriging_results(z_list, xi, yi, layer_names, layer_points, borehole_loc
     axes = axes.flatten()
 
     for i, z_vals in enumerate(z_list):
+        z_vals = z_vals/Z_SCALE
         ax = axes[i]
         zi = z_vals.reshape(len(yi), len(xi))
         c = ax.contourf(xi, yi, zi, cmap='viridis')
@@ -236,7 +237,7 @@ def validate_interpolation(layer_points, grid_points, z_list, layer_names):
         original_z = df['z'].values
 
         # 插值结果
-        interpolated_z = griddata(grid_points, z_list[i], original_points, method='linear')/10
+        interpolated_z = griddata(grid_points, z_list[i], original_points, method='linear')
 
         # 计算误差
         error = interpolated_z - original_z

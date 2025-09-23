@@ -1,17 +1,8 @@
 import numpy as np
 import pyvista as pv
 from scipy.spatial import Delaunay
-try:
-    import trimesh
-except ImportError:
-    trimesh = None
-
-try:
-
-    import py3dtiles
-except ImportError:
-    py3dtiles = None
-
+import trimesh
+import py3dtiles
 import matplotlib.font_manager as fm
 #设置字体文件路径
 font_path = 'SimHei.ttf'
@@ -212,11 +203,12 @@ class Block:
         combined_mesh.save(output_path)
         print(f"模型已导出到 {output_path}")
 
-    def export_to_gltf_trimesh(self, output_path="model.gltf"):
+    def export_to_gltf_trimesh(self, output_path="model.gltf", rotate_axes=True):
         """
         使用Trimesh导出为GLTF格式，支持材质和颜色
         参数:
             output_path: 导出的文件路径
+            rotate_axes: 是否调整坐标轴以修复旋转问题 (默认True)
         """
         if trimesh is None:
             print("需要安装trimesh库：pip install trimesh[easy]")
@@ -245,7 +237,17 @@ class Block:
             
             for idx, mesh in enumerate(self.mesh_list):
                 # 获取顶点和面数据
-                vertices = mesh.points
+                vertices_original = mesh.points
+                if rotate_axes:
+                    # 修复坐标轴方向：确保Z轴垂直向上，地层垂直排列
+                    # 原始: (X, Y, Z) -> 调整: (X, Z, Y) 
+                    vertices = np.column_stack((
+                        vertices_original[:, 0],  # X保持不变
+                        vertices_original[:, 2],  # Z作为新的Y (垂直方向)
+                        vertices_original[:, 1]   # Y作为新的Z (深度方向)
+                    ))
+                else:
+                    vertices = vertices_original
                 faces_data = mesh.faces
                 
                 # 处理面数据：PyVista的面数据格式为 [n, v1, v2, v3, ...] 
@@ -289,12 +291,13 @@ class Block:
             print(f"导出GLTF时出错: {e}")
             print("请确保已安装完整的trimesh库：pip install trimesh[easy]")
 
-    def export_to_3dtiles(self, output_dir="3dtiles_model", center_coords=None):
+    def export_to_3dtiles(self, output_dir="3dtiles_model", center_coords=None, rotate_axes=True):
         """
         导出模型为3DTiles格式，适用于Cesium等Web 3D应用
         参数:
             output_dir: 导出的目录路径
             center_coords: 模型中心坐标 [longitude, latitude, height]，默认为 [0, 0, 0]
+            rotate_axes: 是否调整坐标轴以修复旋转问题 (默认True)
         """
         if py3dtiles is None:
             print("需要安装py3dtiles库：pip install py3dtiles")
@@ -362,7 +365,16 @@ class Block:
                 
                 # 使用trimesh导出单个地层为GLTF
                 if trimesh is not None:
-                    vertices = mesh.points
+                    vertices_original = mesh.points
+                    if rotate_axes:
+                        # 修复坐标轴方向：确保Z轴垂直向上，地层垂直排列
+                        vertices = np.column_stack((
+                            vertices_original[:, 0],  # X保持不变
+                            vertices_original[:, 2],  # Z作为新的Y (垂直方向)
+                            vertices_original[:, 1]   # Y作为新的Z (深度方向)
+                        ))
+                    else:
+                        vertices = vertices_original
                     faces_data = mesh.faces
                     
                     # 处理面数据
@@ -443,21 +455,26 @@ if __name__ == "__main__":
     # # 导出VTM格式
     # builder.export_model("output_model.vtm")
     
-    # # 导出GLTF格式（使用Trimesh）
-    # builder.export_to_gltf_trimesh("output_model.gltf")
+    # # 导出GLTF格式（使用Trimesh，自动修正90度旋转）
+    # builder.export_to_gltf_trimesh("output_model.gltf", rotate_axes=True)
     
-    # # 导出3DTiles格式（用于Cesium等Web 3D应用）
+    # # 导出3DTiles格式（用于Cesium等Web 3D应用，自动修正90度旋转）
     # # 可以指定地理坐标，例如：[116.0, 39.0, 0] 表示北京
-    # builder.export_to_3dtiles("3dtiles_output", center_coords=[116.0, 39.0, 0])
+    # builder.export_to_3dtiles("3dtiles_output", center_coords=[116.0, 39.0, 0], rotate_axes=True)
     
     # 请替换为你的实际数据
     print("请使用实际的 xy 坐标和 z_list 数据来创建 Block 实例")
     print("支持的导出格式:")
     print("1. VTM格式: builder.export_model('model.vtm')")
-    print("2. GLTF格式: builder.export_to_gltf_trimesh('model.gltf')")  
-    print("3. 3DTiles格式: builder.export_to_3dtiles('3dtiles_output', center_coords=[lon, lat, height])")
+    print("2. GLTF格式: builder.export_to_gltf_trimesh('model.gltf', rotate_axes=True)")  
+    print("3. 3DTiles格式: builder.export_to_3dtiles('output_dir', center_coords=[lon, lat, height], rotate_axes=True)")
+    print()
+    print("关于旋转修正:")
+    print("- rotate_axes=True: 修正90度旋转，地层垂直排列（推荐）")
+    print("- rotate_axes=False: 保持原始坐标轴，地层可能横向排列")
     print()
     print("示例用法:")
     print("builder = Block(xy=your_xy_data, z_list=your_z_data, layer_names=your_layer_names)")
     print("builder.visualization_block()")
-    print("builder.export_to_3dtiles('geological_model_3dtiles')")
+    print("builder.export_to_gltf_trimesh('model.gltf', rotate_axes=True)  # 修正旋转")
+    print("builder.export_to_3dtiles('geological_model_3dtiles', rotate_axes=True)  # 修正旋转")
